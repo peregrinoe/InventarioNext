@@ -1,4 +1,3 @@
-
 * {
     margin: 0;
     padding: 0;
@@ -388,6 +387,10 @@ tbody tr:hover {
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 
+.modal-content.modal-detail {
+    max-width: 900px;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -480,5 +483,28 @@ input[type="file"] {
     to {
         transform: translateX(0);
         opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-nav {
+        flex-direction: column;
+    }
+    
+    .nav-btn {
+        width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
     }
 }

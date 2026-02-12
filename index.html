@@ -35,6 +35,9 @@
             <button class="nav-btn" onclick="showSection('asignaciones')">
                 🔗 Asignaciones
             </button>
+            <button class="nav-btn" onclick="showSection('licencias')">
+                🔑 Licencias
+            </button>
         </nav>
         
         <div class="content-area">
@@ -105,17 +108,19 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Foto</th>
                                 <th>Nombre</th>
                                 <th>Email</th>
                                 <th>Departamento</th>
                                 <th>Puesto</th>
-                                <th>Equipos Asignados</th>
+                                <th>Equipos</th>
+                                <th>Licencias</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="colaboradoresTableBody">
                             <tr>
-                                <td colspan="6" class="empty-state">
+                                <td colspan="8" class="empty-state">
                                     <div class="empty-state-icon">👥</div>
                                     <h3>No hay colaboradores registrados</h3>
                                     <p>Haz clic en "Nuevo Colaborador" para comenzar</p>
@@ -143,6 +148,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Foto</th>
                                 <th>Marca</th>
                                 <th>Modelo</th>
                                 <th>Tipo</th>
@@ -155,7 +161,7 @@
                         </thead>
                         <tbody id="equiposTableBody">
                             <tr>
-                                <td colspan="8" class="empty-state">
+                                <td colspan="9" class="empty-state">
                                     <div class="empty-state-icon">💻</div>
                                     <h3>No hay equipos registrados</h3>
                                     <p>Haz clic en "Nuevo Equipo" para comenzar</p>
@@ -169,7 +175,7 @@
             <!-- ASIGNACIONES -->
             <section id="asignaciones" class="section">
                 <div class="section-header">
-                    <h2>Asignaciones</h2>
+                    <h2>Asignaciones de Equipos</h2>
                     <button class="btn btn-primary" onclick="openModal('modalAsignacion')">
                         ➕ Nueva Asignación
                     </button>
@@ -200,6 +206,17 @@
                     </table>
                 </div>
             </section>
+
+            <!-- LICENCIAS -->
+            <section id="licencias" class="section">
+                <div class="section-header">
+                    <h2>Licencias de Software por Colaborador</h2>
+                </div>
+                
+                <div id="licenciasColaboradoresContainer">
+                    <!-- Se llenará dinámicamente con las licencias agrupadas por colaborador -->
+                </div>
+            </section>
         </div>
     </div>
     
@@ -212,6 +229,15 @@
             </div>
             <form id="formColaborador" onsubmit="saveColaborador(event)">
                 <input type="hidden" id="colaboradorId">
+                
+                <div class="form-group">
+                    <label>Foto del Colaborador</label>
+                    <input type="file" id="colaboradorFotoInput" accept="image/*" onchange="previewImage(event, 'colaboradorFotoPreview')">
+                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="document.getElementById('colaboradorFotoInput').click()">📷 Seleccionar Foto</button>
+                    <div id="colaboradorFotoPreview" style="margin-top: 10px;"></div>
+                    <input type="hidden" id="colaboradorFoto">
+                </div>
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Nombre Completo *</label>
@@ -229,7 +255,7 @@
                         <label>Departamento *</label>
                         <select id="colaboradorDepartamento" required>
                             <option value="">Seleccionar...</option>
-                            <option value="SAC">Soporte y Atención a cliente</option>
+                            <option value="SAC">SAC</option>
                             <option value="Hospitality">Consultoria (Hospitality)</option>
                             <option value="Ventas">Ventas</option>
                             <option value="Facturacion y Cobranza">Facturación y Cobranza</option>
@@ -245,6 +271,22 @@
                     <div class="form-group">
                         <label>Fecha de Ingreso</label>
                         <input type="date" id="colaboradorFechaIngreso">
+                    </div>
+                    <div class="form-group">
+                        <label>Jefe Inmediato</label>
+                        <select id="colaboradorJefeInmediato" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="No Aplica">No Aplica</option>
+                            <option value="Mayra Nallely Tovar Garcia">Mayra Nallely Tovar Garcia</option>
+                            <option value="Miriam Reyes Zenteno">Miriam Reyes Zenteno</option>
+                            <option value="Paulina Nieto Tovar">Paulina Nieto Tovar</option>
+                            <option value="Gerardo Cortazar Mendez">Gerardo Cortazar Mendez</option>
+                            <option value="Xochitl Raquel Rodriguez Cortes">Xochitl Raquel Rodriguez Cortes</option>
+                            <option value="Kevin Martin Lechuga Lopez">Kevin Martin Lechuga Lopez</option>
+                            <option value="Pablo Angel Valerio Alvarez">Pablo Angel Valerio Alvarez</option>
+                            <option value="Reynaldo Granados Quiñonez">Reynaldo Granados Quiñonez</option>
+                            <option value="Ismael Díaz Najera">Ismael Díaz Najera</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-actions">
@@ -264,6 +306,15 @@
             </div>
             <form id="formEquipo" onsubmit="saveEquipo(event)">
                 <input type="hidden" id="equipoId">
+                
+                <div class="form-group">
+                    <label>Foto del Equipo</label>
+                    <input type="file" id="equipoFotoInput" accept="image/*" onchange="previewImage(event, 'equipoFotoPreview')">
+                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="document.getElementById('equipoFotoInput').click()">📷 Seleccionar Foto</button>
+                    <div id="equipoFotoPreview" style="margin-top: 10px;"></div>
+                    <input type="hidden" id="equipoFoto">
+                </div>
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Tipo de Equipo *</label>
@@ -288,6 +339,10 @@
                     <div class="form-group">
                         <label>Número de Serie *</label>
                         <input type="text" id="equipoNumSerie" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Equipo</label>
+                        <input type="text" id="equipoNombre" placeholder="Ej: Laptop-Juan-01">
                     </div>
                     <div class="form-group">
                         <label>Procesador</label>
@@ -373,6 +428,92 @@
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modalAsignacion')">Cancelar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL LICENCIA -->
+    <div id="modalLicencia" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalLicenciaTitle">Nueva Licencia</h3>
+                <button class="close-modal" onclick="closeModal('modalLicencia')">&times;</button>
+            </div>
+            <form id="formLicencia" onsubmit="saveLicencia(event)">
+                <input type="hidden" id="licenciaId">
+                <input type="hidden" id="licenciaColaboradorId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Software *</label>
+                        <input type="text" id="licenciaSoftware" required placeholder="Ej: Microsoft Office 365">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Licencia *</label>
+                        <select id="licenciaTipo" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Perpetua">Perpetua</option>
+                            <option value="Suscripción Anual">Suscripción Anual</option>
+                            <option value="Suscripción Mensual">Suscripción Mensual</option>
+                            <option value="Prueba">Prueba</option>
+                            <option value="Gratuita">Gratuita</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Clave/Serial</label>
+                        <input type="text" id="licenciaClave" placeholder="XXXXX-XXXXX-XXXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Compra</label>
+                        <input type="date" id="licenciaFechaCompra">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Vencimiento</label>
+                        <input type="date" id="licenciaFechaVencimiento">
+                    </div>
+                    <div class="form-group">
+                        <label>Estado *</label>
+                        <select id="licenciaEstado" required>
+                            <option value="Activa">Activa</option>
+                            <option value="Vencida">Vencida</option>
+                            <option value="En uso">En uso</option>
+                            <option value="Disponible">Disponible</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea id="licenciaNotas" placeholder="Información adicional..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">💾 Guardar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalLicencia')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE COLABORADOR -->
+    <div id="modalDetalleColaborador" class="modal">
+        <div class="modal-content modal-detail">
+            <div class="modal-header">
+                <h3>Detalle del Colaborador</h3>
+                <button class="close-modal" onclick="closeModal('modalDetalleColaborador')">&times;</button>
+            </div>
+            <div id="detalleColaboradorContent">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE EQUIPO -->
+    <div id="modalDetalleEquipo" class="modal">
+        <div class="modal-content modal-detail">
+            <div class="modal-header">
+                <h3>Detalle del Equipo</h3>
+                <button class="close-modal" onclick="closeModal('modalDetalleEquipo')">&times;</button>
+            </div>
+            <div id="detalleEquipoContent">
+                <!-- Se llenará dinámicamente -->
+            </div>
         </div>
     </div>
     
