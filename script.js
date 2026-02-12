@@ -4,7 +4,8 @@ let database = {
     colaboradores: [],
     equipos: [],
     asignaciones: [],
-    licencias: []
+    licencias: [],
+    licenciasAsignaciones: [] // Nueva tabla para asignaciones de licencias a usuarios
 };
 
 // Mostrar notificación
@@ -171,9 +172,12 @@ function loadData() {
     if (savedData) {
         database = JSON.parse(savedData);
     }
-    // Asegurar que exista el array de licencias
+    // Asegurar que existan los arrays necesarios
     if (!database.licencias) {
         database.licencias = [];
+    }
+    if (!database.licenciasAsignaciones) {
+        database.licenciasAsignaciones = [];
     }
     updateDashboard();
     renderColaboradores();
@@ -293,12 +297,12 @@ function renderColaboradores() {
             a.colaboradorId === col._id && a.estado === 'Activa'
         ).length;
         
-        const licenciasAsignadas = database.licencias.filter(l => 
-            l.colaboradorId === col._id
+        const licenciasAsignadas = database.licenciasAsignaciones.filter(la => 
+            la.colaboradorId === col._id
         ).length;
         
         const fotoHTML = col.foto ? 
-            `<img src="${col.foto}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` :
+            `<img src="${col.foto}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover">` :
             `<div style="width: 40px; height: 40px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${col.nombre.charAt(0)}</div>`;
         
         return `
@@ -329,9 +333,9 @@ function verDetalleColaborador(id) {
         a.colaboradorId === id && a.estado === 'Activa'
     );
     
-    // Obtener licencias asignadas
-    const licenciasAsignadas = database.licencias.filter(l => 
-        l.colaboradorId === id
+    // Obtener licencias asignadas usando la nueva tabla de asignaciones
+    const licenciasAsignacionesCol = database.licenciasAsignaciones.filter(la => 
+        la.colaboradorId === id
     );
     
     const equiposHTML = asignacionesActivas.map(asig => {
@@ -362,8 +366,11 @@ function verDetalleColaborador(id) {
         `;
     }).join('');
     
-    const licenciasHTML = licenciasAsignadas.length > 0 ? licenciasAsignadas.map(lic => {
-        const estadoBadge = lic.estado === 'Activa' || lic.estado === 'En uso' ? 'badge-success' : 
+    const licenciasHTML = licenciasAsignacionesCol.length > 0 ? licenciasAsignacionesCol.map(licAsig => {
+        const lic = database.licencias.find(l => l._id === licAsig.licenciaId);
+        if (!lic) return '';
+        
+        const estadoBadge = lic.estado === 'Activa' ? 'badge-success' : 
                           lic.estado === 'Vencida' ? 'badge-danger' : 'badge-info';
         return `
             <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: white;">
@@ -375,10 +382,6 @@ function verDetalleColaborador(id) {
                 ${lic.clave ? `<p style="margin: 4px 0; color: #64748b; font-family: monospace; font-size: 0.85em;"><strong>Clave:</strong> ${lic.clave}</p>` : ''}
                 ${lic.fechaVencimiento ? `<p style="margin: 4px 0; color: #64748b;"><strong>Vencimiento:</strong> ${new Date(lic.fechaVencimiento).toLocaleDateString()}</p>` : ''}
                 ${lic.notas ? `<p style="margin: 8px 0 0 0; color: #64748b; font-size: 0.9em; font-style: italic;">${lic.notas}</p>` : ''}
-                <div style="margin-top: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-sm btn-primary" onclick='editLicenciaFromDetail("${lic._id}")'>✏️ Editar</button>
-                    <button class="btn btn-sm btn-danger" onclick='deleteLicenciaFromDetail("${lic._id}", "${id}")'>🗑️ Eliminar</button>
-                </div>
             </div>
         `;
     }).join('') : '<p style="color: #94a3b8; text-align: center; padding: 20px;">No tiene licencias asignadas</p>';
@@ -405,7 +408,7 @@ function verDetalleColaborador(id) {
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
                 <p style="margin: 8px 0; color: #475569;"><strong>👔 Jefe Inmediato:</strong> ${colaborador.jefeInmediato || 'No especificado'}</p>
                 <p style="margin: 8px 0; color: #475569;"><strong>💼 Equipos Asignados:</strong> ${asignacionesActivas.length}</p>
-                <p style="margin: 8px 0; color: #475569;"><strong>🔑 Licencias:</strong> ${licenciasAsignadas.length}</p>
+                <p style="margin: 8px 0; color: #475569;"><strong>🔑 Licencias:</strong> ${licenciasAsignacionesCol.length}</p>
             </div>
         </div>
         
@@ -414,10 +417,7 @@ function verDetalleColaborador(id) {
             ${equiposHTML || '<p style="color: #94a3b8; text-align: center;">No tiene equipos asignados actualmente</p>'}
         </div>
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 25px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">🔑 Licencias de Software</h3>
-            <button class="btn btn-sm btn-primary" onclick='agregarLicenciaColaborador("${id}")'>➕ Agregar Licencia</button>
-        </div>
+        <h3 style="margin: 25px 0 15px 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">🔑 Licencias de Software</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
             ${licenciasHTML}
         </div>
@@ -491,6 +491,7 @@ function saveEquipo(event) {
         modelo: document.getElementById('equipoModelo').value,
         numSerie: document.getElementById('equipoNumSerie').value,
         nombreEquipo: document.getElementById('equipoNombre').value,
+        idInterno: document.getElementById('IdequipoInterno').value,
         procesador: document.getElementById('equipoProcesador').value,
         ram: document.getElementById('equipoRam').value,
         almacenamiento: document.getElementById('equipoAlmacenamiento').value,
@@ -647,6 +648,7 @@ function verDetalleEquipo(id) {
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
                 <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">Información General</h3>
                 <p style="margin: 6px 0; color: #475569;"><strong>Número de Serie:</strong> ${equipo.numSerie}</p>
+                ${equipo.idInterno ? `<p style="margin: 6px 0; color: #475569;"><strong>ID Interno:</strong> ${equipo.idInterno}</p>` : ''}
                 ${equipo.nombreEquipo ? `<p style="margin: 6px 0; color: #475569;"><strong>Nombre:</strong> ${equipo.nombreEquipo}</p>` : ''}
                 ${equipo.fechaCompra ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Compra:</strong> ${new Date(equipo.fechaCompra).toLocaleDateString()}</p>` : ''}
             </div>
@@ -706,6 +708,7 @@ function editEquipo(id) {
     document.getElementById('equipoModelo').value = equipo.modelo;
     document.getElementById('equipoNumSerie').value = equipo.numSerie;
     document.getElementById('equipoNombre').value = equipo.nombreEquipo || '';
+    document.getElementById('IdequipoInterno').value = equipo.idInterno || '';
     document.getElementById('equipoProcesador').value = equipo.procesador || '';
     document.getElementById('equipoRam').value = equipo.ram || '';
     document.getElementById('equipoAlmacenamiento').value = equipo.almacenamiento || '';
@@ -894,27 +897,13 @@ function deleteAsignacion(id) {
 }
 
 // LICENCIAS
-function agregarLicenciaColaborador(colaboradorId) {
-    // Limpiar el formulario
-    document.getElementById('formLicencia').reset();
-    document.getElementById('licenciaId').value = '';
-    document.getElementById('licenciaColaboradorId').value = colaboradorId;
-    document.getElementById('modalLicenciaTitle').textContent = 'Nueva Licencia';
-    
-    // Cerrar el modal de detalle y abrir el modal de licencia
-    closeModal('modalDetalleColaborador');
-    openModal('modalLicencia');
-}
-
 function saveLicencia(event) {
     event.preventDefault();
     
     const id = document.getElementById('licenciaId').value;
-    const colaboradorId = document.getElementById('licenciaColaboradorId').value;
     
     const licencia = {
         _id: id || 'LIC' + Date.now(),
-        colaboradorId: colaboradorId,
         software: document.getElementById('licenciaSoftware').value,
         tipo: document.getElementById('licenciaTipo').value,
         clave: document.getElementById('licenciaClave').value,
@@ -936,90 +925,66 @@ function saveLicencia(event) {
     
     saveData();
     renderLicencias();
-    renderColaboradores();
     closeModal('modalLicencia');
-    
-    // Volver a abrir el detalle del colaborador si estábamos ahí
-    if (colaboradorId) {
-        verDetalleColaborador(colaboradorId);
-    }
 }
 
 function renderLicencias() {
-    const container = document.getElementById('licenciasColaboradoresContainer');
+    const tbody = document.getElementById('licenciasTableBody');
     
-    if (database.colaboradores.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">👥</div>
-                <h3>No hay colaboradores registrados</h3>
-                <p>Primero debes crear colaboradores</p>
-            </div>
+    if (database.licencias.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-state">
+                    <div class="empty-state-icon">🔑</div>
+                    <h3>No hay licencias registradas</h3>
+                    <p>Haz clic en "Nueva Licencia" para comenzar</p>
+                </td>
+            </tr>
         `;
         return;
     }
     
-    let html = '';
-    
-    database.colaboradores.forEach(colaborador => {
-        const licencias = database.licencias.filter(l => l.colaboradorId === colaborador._id);
+    tbody.innerHTML = database.licencias.map(lic => {
+        const cantidadAsignada = database.licenciasAsignaciones.filter(la => 
+            la.licenciaId === lic._id
+        ).length;
         
-        const fotoHTML = colaborador.foto ? 
-            `<img src="${colaborador.foto}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">` :
-            `<div style="width: 50px; height: 50px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em;">${colaborador.nombre.charAt(0)}</div>`;
+        const estadoBadge = lic.estado === 'Activa' ? 'badge-success' : 
+                          lic.estado === 'Vencida' ? 'badge-danger' : 'badge-info';
         
-        html += `
-            <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        ${fotoHTML}
-                        <div>
-                            <h3 style="margin: 0; color: #1e293b;">${colaborador.nombre}</h3>
-                            <p style="margin: 4px 0 0 0; color: #64748b;">${colaborador.departamento} - ${colaborador.puesto}</p>
-                        </div>
-                    </div>
-                    <button class="btn btn-sm btn-primary" onclick='agregarLicenciaColaborador("${colaborador._id}")'>➕ Agregar Licencia</button>
-                </div>
-                
-                ${licencias.length > 0 ? `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-                        ${licencias.map(lic => {
-                            const estadoBadge = lic.estado === 'Activa' || lic.estado === 'En uso' ? 'badge-success' : 
-                                              lic.estado === 'Vencida' ? 'badge-danger' : 'badge-info';
-                            return `
-                                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; background: #f8fafc;">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                                        <h4 style="margin: 0; color: #1e293b;">${lic.software}</h4>
-                                        <span class="badge ${estadoBadge}">${lic.estado}</span>
-                                    </div>
-                                    <p style="margin: 6px 0; color: #64748b; font-size: 0.9em;"><strong>Tipo:</strong> ${lic.tipo}</p>
-                                    ${lic.clave ? `<p style="margin: 6px 0; color: #64748b; font-size: 0.85em; font-family: monospace;"><strong>Clave:</strong> ${lic.clave}</p>` : ''}
-                                    ${lic.fechaCompra ? `<p style="margin: 6px 0; color: #64748b; font-size: 0.9em;"><strong>Compra:</strong> ${new Date(lic.fechaCompra).toLocaleDateString()}</p>` : ''}
-                                    ${lic.fechaVencimiento ? `<p style="margin: 6px 0; color: #64748b; font-size: 0.9em;"><strong>Vencimiento:</strong> ${new Date(lic.fechaVencimiento).toLocaleDateString()}</p>` : ''}
-                                    ${lic.notas ? `<p style="margin: 10px 0 0 0; color: #64748b; font-size: 0.85em; font-style: italic; padding-top: 10px; border-top: 1px solid #e2e8f0;">${lic.notas}</p>` : ''}
-                                    <div style="margin-top: 12px; display: flex; gap: 8px;">
-                                        <button class="btn btn-sm btn-primary" onclick='editLicencia("${lic._id}")'>✏️ Editar</button>
-                                        <button class="btn btn-sm btn-danger" onclick='deleteLicencia("${lic._id}")'>🗑️ Eliminar</button>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                ` : `
-                    <p style="color: #94a3b8; text-align: center; padding: 20px;">No tiene licencias asignadas</p>
-                `}
-            </div>
+        return `
+            <tr>
+                <td><strong>${lic.software}</strong></td>
+                <td>${lic.tipo}</td>
+                <td style="font-family: monospace; font-size: 0.9em;">${lic.clave || '-'}</td>
+                <td><span class="badge badge-info">${cantidadAsignada} usuario(s)</span></td>
+                <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
+                <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
+                <td class="action-buttons">
+                    <button class="btn btn-sm btn-success" onclick='abrirAsignarUsuarios("${lic._id}")'>👥 Asignar</button>
+                    <button class="btn btn-sm btn-info" onclick='verDetalleLicencia("${lic._id}")'>👁️ Ver</button>
+                    <button class="btn btn-sm btn-primary" onclick='editLicencia("${lic._id}")'>✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick='deleteLicencia("${lic._id}")'>🗑️</button>
+                </td>
+            </tr>
         `;
-    });
+    }).join('');
+}
+
+function filterLicencias() {
+    const searchTerm = document.getElementById('searchLicencia').value.toLowerCase();
+    const rows = document.querySelectorAll('#licenciasTableBody tr');
     
-    container.innerHTML = html;
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
 }
 
 function editLicencia(id) {
     const licencia = database.licencias.find(l => l._id === id);
     
     document.getElementById('licenciaId').value = licencia._id;
-    document.getElementById('licenciaColaboradorId').value = licencia.colaboradorId;
     document.getElementById('licenciaSoftware').value = licencia.software;
     document.getElementById('licenciaTipo').value = licencia.tipo;
     document.getElementById('licenciaClave').value = licencia.clave || '';
@@ -1032,12 +997,17 @@ function editLicencia(id) {
     openModal('modalLicencia');
 }
 
-function editLicenciaFromDetail(id) {
-    editLicencia(id);
-    closeModal('modalDetalleColaborador');
-}
-
 function deleteLicencia(id) {
+    const asignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId === id);
+    
+    if (asignaciones.length > 0) {
+        if (!confirm(`Esta licencia está asignada a ${asignaciones.length} usuario(s). ¿Deseas eliminarla de todas formas? Se eliminarán todas las asignaciones.`)) {
+            return;
+        }
+        // Eliminar todas las asignaciones
+        database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== id);
+    }
+    
     if (confirm('¿Estás seguro de eliminar esta licencia?')) {
         database.licencias = database.licencias.filter(l => l._id !== id);
         saveData();
@@ -1047,16 +1017,192 @@ function deleteLicencia(id) {
     }
 }
 
-function deleteLicenciaFromDetail(id, colaboradorId) {
-    if (confirm('¿Estás seguro de eliminar esta licencia?')) {
-        database.licencias = database.licencias.filter(l => l._id !== id);
-        saveData();
-        renderLicencias();
-        renderColaboradores();
-        showNotification('✅ Licencia eliminada');
-        // Reabrir el detalle del colaborador actualizado
-        verDetalleColaborador(colaboradorId);
+function abrirAsignarUsuarios(licenciaId) {
+    const licencia = database.licencias.find(l => l._id === licenciaId);
+    if (!licencia) return;
+    
+    document.getElementById('licenciaAsignarId').value = licenciaId;
+    document.getElementById('licenciaAsignarNombre').textContent = licencia.software;
+    
+    const asignacionesActuales = database.licenciasAsignaciones
+        .filter(la => la.licenciaId === licenciaId)
+        .map(la => la.colaboradorId);
+    
+    const listaHTML = database.colaboradores.map(col => {
+        const isAsignado = asignacionesActuales.includes(col._id);
+        const fotoHTML = col.foto ? 
+            `<img src="${col.foto}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` :
+            `<div style="width: 40px; height: 40px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${col.nombre.charAt(0)}</div>`;
+        
+        return `
+            <div class="usuario-asignar-item" data-nombre="${col.nombre.toLowerCase()}" style="display: flex; align-items: center; gap: 15px; padding: 12px; border: 2px solid ${isAsignado ? '#667eea' : '#e2e8f0'}; border-radius: 8px; margin-bottom: 10px; background: ${isAsignado ? '#f0f4ff' : 'white'}; cursor: pointer;" onclick="toggleAsignacionLicencia('${col._id}', this)">
+                ${fotoHTML}
+                <div style="flex: 1;">
+                    <strong style="color: #1e293b;">${col.nombre}</strong>
+                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">${col.departamento} - ${col.puesto}</p>
+                </div>
+                <input type="checkbox" ${isAsignado ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;" onclick="event.stopPropagation();">
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('listaUsuariosAsignar').innerHTML = listaHTML;
+    openModal('modalAsignarUsuarios');
+}
+
+function toggleAsignacionLicencia(colaboradorId, element) {
+    const checkbox = element.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        element.style.borderColor = '#667eea';
+        element.style.background = '#f0f4ff';
+    } else {
+        element.style.borderColor = '#e2e8f0';
+        element.style.background = 'white';
     }
+}
+
+function filterUsuariosAsignar() {
+    const searchTerm = document.getElementById('searchUsuarioAsignar').value.toLowerCase();
+    const items = document.querySelectorAll('.usuario-asignar-item');
+    
+    items.forEach(item => {
+        const nombre = item.getAttribute('data-nombre');
+        item.style.display = nombre.includes(searchTerm) ? 'flex' : 'none';
+    });
+}
+
+function guardarAsignacionesLicencia() {
+    const licenciaId = document.getElementById('licenciaAsignarId').value;
+    const checkboxes = document.querySelectorAll('#listaUsuariosAsignar input[type="checkbox"]');
+    
+    // Eliminar asignaciones antiguas de esta licencia
+    database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => 
+        la.licenciaId !== licenciaId
+    );
+    
+    // Agregar nuevas asignaciones
+    checkboxes.forEach((checkbox, index) => {
+        if (checkbox.checked) {
+            const item = checkbox.closest('.usuario-asignar-item');
+            const colaboradorId = database.colaboradores[index]._id;
+            
+            database.licenciasAsignaciones.push({
+                _id: 'LA' + Date.now() + '_' + index,
+                licenciaId: licenciaId,
+                colaboradorId: colaboradorId,
+                fechaAsignacion: new Date().toISOString()
+            });
+        }
+    });
+    
+    saveData();
+    renderLicencias();
+    renderColaboradores();
+    closeModal('modalAsignarUsuarios');
+    showNotification('✅ Asignaciones guardadas correctamente');
+}
+
+function seleccionarTodosUsuarios() {
+    const items = document.querySelectorAll('.usuario-asignar-item');
+    items.forEach(item => {
+        // Solo seleccionar items visibles (no filtrados)
+        if (item.style.display !== 'none') {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            checkbox.checked = true;
+            item.style.borderColor = '#667eea';
+            item.style.background = '#f0f4ff';
+        }
+    });
+    showNotification('✓ Todos los usuarios seleccionados', 'success');
+}
+
+function deseleccionarTodosUsuarios() {
+    const items = document.querySelectorAll('.usuario-asignar-item');
+    items.forEach(item => {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        checkbox.checked = false;
+        item.style.borderColor = '#e2e8f0';
+        item.style.background = 'white';
+    });
+    showNotification('✗ Todos los usuarios deseleccionados', 'success');
+}
+
+function verDetalleLicencia(id) {
+    const licencia = database.licencias.find(l => l._id === id);
+    if (!licencia) return;
+    
+    const asignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId === id);
+    
+    const usuariosHTML = asignaciones.length > 0 ? asignaciones.map(asig => {
+        const colaborador = database.colaboradores.find(c => c._id === asig.colaboradorId);
+        if (!colaborador) return '';
+        
+        const fotoHTML = colaborador.foto ? 
+            `<img src="${colaborador.foto}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">` :
+            `<div style="width: 50px; height: 50px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em;">${colaborador.nombre.charAt(0)}</div>`;
+        
+        return `
+            <div style="display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                ${fotoHTML}
+                <div style="flex: 1;">
+                    <strong style="color: #1e293b;">${colaborador.nombre}</strong>
+                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">${colaborador.departamento} - ${colaborador.puesto}</p>
+                    <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.85em;">Asignada el: ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
+                </div>
+            </div>
+        `;
+    }).join('') : '<p style="color: #94a3b8; text-align: center; padding: 20px;">No hay usuarios asignados a esta licencia</p>';
+    
+    const estadoBadge = licencia.estado === 'Activa' ? 'badge-success' : 
+                       licencia.estado === 'Vencida' ? 'badge-danger' : 'badge-info';
+    
+    const content = `
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display: inline-block; padding: 20px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <div style="font-size: 4em; margin-bottom: 10px;">🔑</div>
+                <h2 style="margin: 0 0 5px 0;">${licencia.software}</h2>
+                <p style="margin: 0; font-size: 1.1em; opacity: 0.9;">${licencia.tipo}</p>
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="badge ${estadoBadge}" style="font-size: 1em; padding: 8px 16px;">${licencia.estado}</span>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">Información de la Licencia</h3>
+                ${licencia.clave ? `<p style="margin: 6px 0; color: #475569; font-family: monospace; font-size: 0.9em;"><strong>Clave:</strong> ${licencia.clave}</p>` : ''}
+                ${licencia.fechaCompra ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Compra:</strong> ${new Date(licencia.fechaCompra).toLocaleDateString()}</p>` : ''}
+                ${licencia.fechaVencimiento ? `<p style="margin: 6px 0; color: #475569;"><strong>Vencimiento:</strong> ${new Date(licencia.fechaVencimiento).toLocaleDateString()}</p>` : ''}
+            </div>
+            
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">Estadísticas</h3>
+                <p style="margin: 6px 0; color: #475569;"><strong>Usuarios Asignados:</strong> ${asignaciones.length}</p>
+                <p style="margin: 6px 0; color: #475569;"><strong>Tipo:</strong> ${licencia.tipo}</p>
+            </div>
+        </div>
+        
+        ${licencia.notas ? `
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #f59e0b;">
+                <h3 style="margin: 0 0 8px 0; color: #92400e; font-size: 1.1em;">📝 Notas</h3>
+                <p style="margin: 0; color: #78350f;">${licencia.notas}</p>
+            </div>
+        ` : ''}
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 25px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+            <h3 style="margin: 0; color: #1e293b;">👥 Usuarios Asignados</h3>
+            <button class="btn btn-sm btn-primary" onclick='closeModal("modalDetalleLicencia"); abrirAsignarUsuarios("${id}")'>➕ Gestionar</button>
+        </div>
+        <div style="display: grid; gap: 12px;">
+            ${usuariosHTML}
+        </div>
+    `;
+    
+    document.getElementById('detalleLicenciaContent').innerHTML = content;
+    openModal('modalDetalleLicencia');
 }
 
 // DASHBOARD

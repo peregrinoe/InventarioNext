@@ -210,11 +210,39 @@
             <!-- LICENCIAS -->
             <section id="licencias" class="section">
                 <div class="section-header">
-                    <h2>Licencias de Software por Colaborador</h2>
+                    <h2>Licencias de Software</h2>
+                    <button class="btn btn-primary" onclick="openModal('modalLicencia')">
+                        ➕ Nueva Licencia
+                    </button>
                 </div>
                 
-                <div id="licenciasColaboradoresContainer">
-                    <!-- Se llenará dinámicamente con las licencias agrupadas por colaborador -->
+                <div class="search-box">
+                    <input type="text" id="searchLicencia" placeholder="🔍 Buscar licencia..." onkeyup="filterLicencias()">
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Software</th>
+                                <th>Tipo Licencia</th>
+                                <th>Clave/Serial</th>
+                                <th>Cantidad Asignada</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="licenciasTableBody">
+                            <tr>
+                                <td colspan="7" class="empty-state">
+                                    <div class="empty-state-icon">🔑</div>
+                                    <h3>No hay licencias registradas</h3>
+                                    <p>Haz clic en "Nueva Licencia" para comenzar</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </div>
@@ -280,7 +308,6 @@
                         <select id="colaboradorJefeInmediato" required>
                             <option value="">Seleccionar...</option>
                             <option value="No Aplica">No Aplica</option>
-                            <option value="Miriam Reyes Zenteno">Miriam Reyes Zenteno</option>
                             <option value="Mayra Nallely Tovar Garcia">Mayra Nallely Tovar Garcia</option>
                             <option value="Paulina Nieto Tovar">Paulina Nieto Tovar</option>
                             <option value="Gerardo Cortazar Mendez">Gerardo Cortazar Mendez</option>
@@ -350,6 +377,10 @@
                     <div class="form-group">
                         <label>Nombre del Equipo</label>
                         <input type="text" id="equipoNombre" placeholder="Ej: Laptop-Juan-01">
+                    </div>
+                     <div class="form-group">
+                        <label>ID Interno equipo</label>
+                        <input type="text" id="IdequipoInterno" placeholder="Ej: NT001XX">
                     </div>
                     <div class="form-group">
                         <label>Procesador</label>
@@ -447,7 +478,6 @@
             </div>
             <form id="formLicencia" onsubmit="saveLicencia(event)">
                 <input type="hidden" id="licenciaId">
-                <input type="hidden" id="licenciaColaboradorId">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Software *</label>
@@ -481,7 +511,6 @@
                         <select id="licenciaEstado" required>
                             <option value="Activa">Activa</option>
                             <option value="Vencida">Vencida</option>
-                            <option value="En uso">En uso</option>
                             <option value="Disponible">Disponible</option>
                         </select>
                     </div>
@@ -495,6 +524,48 @@
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modalLicencia')">Cancelar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL ASIGNAR USUARIOS A LICENCIA -->
+    <div id="modalAsignarUsuarios" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Asignar Usuarios a <span id="licenciaAsignarNombre"></span></h3>
+                <button class="close-modal" onclick="closeModal('modalAsignarUsuarios')">&times;</button>
+            </div>
+            <div>
+                <input type="hidden" id="licenciaAsignarId">
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button type="button" class="btn btn-sm btn-success" onclick="seleccionarTodosUsuarios()">✓ Seleccionar Todos</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="deseleccionarTodosUsuarios()">✗ Deseleccionar Todos</button>
+                </div>
+                
+                <div class="search-box">
+                    <input type="text" id="searchUsuarioAsignar" placeholder="🔍 Buscar colaborador..." onkeyup="filterUsuariosAsignar()">
+                </div>
+                <div id="listaUsuariosAsignar" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-success" onclick="guardarAsignacionesLicencia()">💾 Guardar Asignaciones</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalAsignarUsuarios')">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE LICENCIA -->
+    <div id="modalDetalleLicencia" class="modal">
+        <div class="modal-content modal-detail">
+            <div class="modal-header">
+                <h3>Detalle de Licencia</h3>
+                <button class="close-modal" onclick="closeModal('modalDetalleLicencia')">&times;</button>
+            </div>
+            <div id="detalleLicenciaContent">
+                <!-- Se llenará dinámicamente -->
+            </div>
         </div>
     </div>
 
