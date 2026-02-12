@@ -233,7 +233,10 @@
                 <div class="form-group">
                     <label>Foto del Colaborador</label>
                     <input type="file" id="colaboradorFotoInput" accept="image/*" onchange="previewImage(event, 'colaboradorFotoPreview')">
-                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="document.getElementById('colaboradorFotoInput').click()">📷 Seleccionar Foto</button>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('colaboradorFotoInput').click()">📷 Seleccionar Foto</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="borrarFoto('colaborador')">🗑️ Borrar Foto</button>
+                    </div>
                     <div id="colaboradorFotoPreview" style="margin-top: 10px;"></div>
                     <input type="hidden" id="colaboradorFoto">
                 </div>
@@ -277,8 +280,8 @@
                         <select id="colaboradorJefeInmediato" required>
                             <option value="">Seleccionar...</option>
                             <option value="No Aplica">No Aplica</option>
-                            <option value="Mayra Nallely Tovar Garcia">Mayra Nallely Tovar Garcia</option>
                             <option value="Miriam Reyes Zenteno">Miriam Reyes Zenteno</option>
+                            <option value="Mayra Nallely Tovar Garcia">Mayra Nallely Tovar Garcia</option>
                             <option value="Paulina Nieto Tovar">Paulina Nieto Tovar</option>
                             <option value="Gerardo Cortazar Mendez">Gerardo Cortazar Mendez</option>
                             <option value="Xochitl Raquel Rodriguez Cortes">Xochitl Raquel Rodriguez Cortes</option>
@@ -307,12 +310,16 @@
             <form id="formEquipo" onsubmit="saveEquipo(event)">
                 <input type="hidden" id="equipoId">
                 
-                <div class="form-group">
-                    <label>Foto del Equipo</label>
-                    <input type="file" id="equipoFotoInput" accept="image/*" onchange="previewImage(event, 'equipoFotoPreview')">
-                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="document.getElementById('equipoFotoInput').click()">📷 Seleccionar Foto</button>
-                    <div id="equipoFotoPreview" style="margin-top: 10px;"></div>
-                    <input type="hidden" id="equipoFoto">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Fotos del Estado Actual del Equipo (Frente, Teclado, Pantalla, etc.)</label>
+                    <input type="file" id="equipoFotosInput" accept="image/*" multiple onchange="previewMultipleImages(event)">
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('equipoFotosInput').click()">📷 Seleccionar Fotos</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="borrarTodasFotos()">🗑️ Borrar Todas las Fotos</button>
+                    </div>
+                    <p style="margin-top: 8px; font-size: 0.85em; color: #64748b;">💡 Puedes seleccionar múltiples fotos: frente del equipo, teclado, pantalla, laterales, etc.</p>
+                    <div id="equipoFotosPreview" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;"></div>
+                    <input type="hidden" id="equipoFotos">
                 </div>
 
                 <div class="form-grid">

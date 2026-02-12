@@ -32,11 +32,88 @@ function previewImage(event, previewId) {
             // Guardar en el campo hidden correspondiente
             if (previewId === 'colaboradorFotoPreview') {
                 document.getElementById('colaboradorFoto').value = e.target.result;
-            } else if (previewId === 'equipoFotoPreview') {
-                document.getElementById('equipoFoto').value = e.target.result;
             }
         };
         reader.readAsDataURL(file);
+    }
+}
+
+// Preview de múltiples imágenes para equipos
+function previewMultipleImages(event) {
+    const files = event.target.files;
+    const preview = document.getElementById('equipoFotosPreview');
+    const fotosArray = [];
+    
+    if (files.length > 0) {
+        preview.innerHTML = '';
+        let loadedCount = 0;
+        
+        Array.from(files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                fotosArray.push(e.target.result);
+                
+                const fotoDiv = document.createElement('div');
+                fotoDiv.style.position = 'relative';
+                fotoDiv.innerHTML = `
+                    <img src="${e.target.result}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
+                    <button type="button" onclick="borrarFotoIndividual(${index})" style="position: absolute; top: 5px; right: 5px; background: #f56565; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;">×</button>
+                    <p style="margin-top: 5px; font-size: 0.75em; color: #64748b; text-align: center;">Foto ${index + 1}</p>
+                `;
+                preview.appendChild(fotoDiv);
+                
+                loadedCount++;
+                if (loadedCount === files.length) {
+                    document.getElementById('equipoFotos').value = JSON.stringify(fotosArray);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+// Borrar foto individual del equipo
+function borrarFotoIndividual(index) {
+    const fotosHidden = document.getElementById('equipoFotos').value;
+    if (fotosHidden) {
+        let fotosArray = JSON.parse(fotosHidden);
+        fotosArray.splice(index, 1);
+        document.getElementById('equipoFotos').value = JSON.stringify(fotosArray);
+        
+        // Re-renderizar las fotos
+        const preview = document.getElementById('equipoFotosPreview');
+        preview.innerHTML = '';
+        
+        fotosArray.forEach((foto, idx) => {
+            const fotoDiv = document.createElement('div');
+            fotoDiv.style.position = 'relative';
+            fotoDiv.innerHTML = `
+                <img src="${foto}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
+                <button type="button" onclick="borrarFotoIndividual(${idx})" style="position: absolute; top: 5px; right: 5px; background: #f56565; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;">×</button>
+                <p style="margin-top: 5px; font-size: 0.75em; color: #64748b; text-align: center;">Foto ${idx + 1}</p>
+            `;
+            preview.appendChild(fotoDiv);
+        });
+        
+        showNotification('🗑️ Foto eliminada', 'success');
+    }
+}
+
+// Borrar todas las fotos del equipo
+function borrarTodasFotos() {
+    document.getElementById('equipoFotos').value = '';
+    document.getElementById('equipoFotosPreview').innerHTML = '';
+    document.getElementById('equipoFotosInput').value = '';
+    showNotification('🗑️ Todas las fotos eliminadas', 'success');
+}
+
+// Borrar foto de colaborador
+function borrarFoto(tipo) {
+    if (tipo === 'colaborador') {
+        document.getElementById('colaboradorFoto').value = '';
+        document.getElementById('colaboradorFotoPreview').innerHTML = '';
+        document.getElementById('colaboradorFotoInput').value = '';
+        showNotification('🗑️ Foto eliminada', 'success');
     }
 }
 
@@ -151,8 +228,8 @@ function closeModal(modalId) {
         document.getElementById('formEquipo').reset();
         document.getElementById('equipoId').value = '';
         document.getElementById('modalEquipoTitle').textContent = 'Nuevo Equipo';
-        document.getElementById('equipoFotoPreview').innerHTML = '';
-        document.getElementById('equipoFoto').value = '';
+        document.getElementById('equipoFotosPreview').innerHTML = '';
+        document.getElementById('equipoFotos').value = '';
     } else if (modalId === 'modalAsignacion') {
         document.getElementById('formAsignacion').reset();
     } else if (modalId === 'modalLicencia') {
@@ -261,8 +338,10 @@ function verDetalleColaborador(id) {
         const equipo = database.equipos.find(e => e._id === asig.equipoId);
         if (!equipo) return '';
         
-        const fotoEquipo = equipo.foto ? 
-            `<img src="${equipo.foto}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover;">` :
+        // Compatibilidad con versión anterior
+        const fotos = equipo.fotos || (equipo.foto ? [equipo.foto] : []);
+        const fotoEquipo = fotos.length > 0 ? 
+            `<img src="${fotos[0]}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover;">` :
             `<div style="width: 80px; height: 80px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 2em;">💻</div>`;
         
         return `
@@ -276,6 +355,7 @@ function verDetalleColaborador(id) {
                         <p style="margin: 4px 0; color: #64748b;"><strong>Asignado:</strong> ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
                         ${equipo.procesador ? `<p style="margin: 4px 0; color: #64748b;"><strong>Procesador:</strong> ${equipo.procesador}</p>` : ''}
                         ${equipo.ram ? `<p style="margin: 4px 0; color: #64748b;"><strong>RAM:</strong> ${equipo.ram} GB</p>` : ''}
+                        ${fotos.length > 1 ? `<p style="margin: 8px 0 0 0; color: #667eea; font-size: 0.85em;">📸 ${fotos.length} fotos disponibles</p>` : ''}
                     </div>
                 </div>
             </div>
@@ -401,6 +481,9 @@ function saveEquipo(event) {
     event.preventDefault();
     
     const id = document.getElementById('equipoId').value;
+    const fotosValue = document.getElementById('equipoFotos').value;
+    const fotos = fotosValue ? JSON.parse(fotosValue) : [];
+    
     const equipo = {
         _id: id || 'EQ' + Date.now(),
         tipo: document.getElementById('equipoTipo').value,
@@ -415,7 +498,7 @@ function saveEquipo(event) {
         fechaCompra: document.getElementById('equipoFechaCompra').value,
         estado: document.getElementById('equipoEstado').value,
         observaciones: document.getElementById('equipoObservaciones').value,
-        foto: document.getElementById('equipoFoto').value || '',
+        fotos: fotos,
         createdAt: id ? database.equipos.find(e => e._id === id).createdAt : new Date().toISOString()
     };
     
@@ -461,8 +544,10 @@ function renderEquipos() {
                           eq.estado === 'Asignado' ? 'badge-info' : 
                           eq.estado === 'Mantenimiento' ? 'badge-warning' : 'badge-danger';
         
-        const fotoHTML = eq.foto ? 
-            `<img src="${eq.foto}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">` :
+        // Mostrar la primera foto si existe, o el ícono por defecto
+        const fotos = eq.fotos || (eq.foto ? [eq.foto] : []); // Compatibilidad con versión anterior
+        const fotoHTML = fotos.length > 0 ? 
+            `<img src="${fotos[0]}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">` :
             `<div style="width: 40px; height: 40px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center;">💻</div>`;
         
         return `
@@ -501,9 +586,27 @@ function verDetalleEquipo(id) {
         .filter(a => a.equipoId === id)
         .sort((a, b) => new Date(b.fechaAsignacion) - new Date(a.fechaAsignacion));
     
-    const fotoEquipo = equipo.foto ? 
-        `<img src="${equipo.foto}" style="width: 200px; height: 200px; border-radius: 12px; object-fit: cover; border: 4px solid #667eea;">` :
-        `<div style="width: 200px; height: 200px; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 5em; color: white;">💻</div>`;
+    // Fotos del equipo (compatibilidad con versión anterior)
+    const fotos = equipo.fotos || (equipo.foto ? [equipo.foto] : []);
+    
+    const galeriaFotos = fotos.length > 0 ? `
+        <div style="margin-bottom: 30px;">
+            <h3 style="margin: 0 0 15px 0; color: #1e293b;">📸 Fotos del Estado Actual</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                ${fotos.map((foto, index) => `
+                    <div style="position: relative; cursor: pointer;" onclick='ampliarFoto("${foto}")'>
+                        <img src="${foto}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; border: 2px solid #e2e8f0;">
+                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75em;">Foto ${index + 1}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    ` : `
+        <div style="text-align: center; padding: 30px; background: #f8fafc; border-radius: 12px; margin-bottom: 30px;">
+            <div style="font-size: 3em; margin-bottom: 10px;">📷</div>
+            <p style="color: #94a3b8;">No hay fotos del estado actual del equipo</p>
+        </div>
+    `;
     
     const estadoBadge = equipo.estado === 'Disponible' ? 'badge-success' : 
                        equipo.estado === 'Asignado' ? 'badge-info' : 
@@ -528,11 +631,17 @@ function verDetalleEquipo(id) {
     
     const content = `
         <div style="text-align: center; margin-bottom: 30px;">
-            ${fotoEquipo}
-            <h2 style="margin: 15px 0 5px 0; color: #1e293b;">${equipo.marca} ${equipo.modelo}</h2>
-            <p style="color: #64748b; font-size: 1.1em;">${equipo.tipo}</p>
-            <span class="badge ${estadoBadge}" style="font-size: 1em; padding: 8px 16px;">${equipo.estado}</span>
+            <div style="display: inline-block; padding: 20px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <div style="font-size: 4em; margin-bottom: 10px;">💻</div>
+                <h2 style="margin: 0 0 5px 0;">${equipo.marca} ${equipo.modelo}</h2>
+                <p style="margin: 0; font-size: 1.1em; opacity: 0.9;">${equipo.tipo}</p>
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="badge ${estadoBadge}" style="font-size: 1em; padding: 8px 16px;">${equipo.estado}</span>
+            </div>
         </div>
+        
+        ${galeriaFotos}
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
@@ -577,6 +686,17 @@ function verDetalleEquipo(id) {
     openModal('modalDetalleEquipo');
 }
 
+// Función para ampliar foto (opcional - modal simple)
+function ampliarFoto(fotoSrc) {
+    const modalAmpliada = document.createElement('div');
+    modalAmpliada.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; display: flex; align-items: center; justify-content: center; cursor: pointer;';
+    modalAmpliada.innerHTML = `<img src="${fotoSrc}" style="max-width: 90%; max-height: 90%; border-radius: 12px;">`;
+    modalAmpliada.onclick = function() {
+        document.body.removeChild(modalAmpliada);
+    };
+    document.body.appendChild(modalAmpliada);
+}
+
 function editEquipo(id) {
     const equipo = database.equipos.find(e => e._id === id);
     
@@ -594,10 +714,24 @@ function editEquipo(id) {
     document.getElementById('equipoEstado').value = equipo.estado;
     document.getElementById('equipoObservaciones').value = equipo.observaciones || '';
     
-    if (equipo.foto) {
-        document.getElementById('equipoFoto').value = equipo.foto;
-        document.getElementById('equipoFotoPreview').innerHTML = 
-            `<img src="${equipo.foto}" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 2px solid #e2e8f0;">`;
+    // Cargar fotos existentes (compatibilidad con versión anterior)
+    const fotos = equipo.fotos || (equipo.foto ? [equipo.foto] : []);
+    
+    if (fotos.length > 0) {
+        document.getElementById('equipoFotos').value = JSON.stringify(fotos);
+        const preview = document.getElementById('equipoFotosPreview');
+        preview.innerHTML = '';
+        
+        fotos.forEach((foto, index) => {
+            const fotoDiv = document.createElement('div');
+            fotoDiv.style.position = 'relative';
+            fotoDiv.innerHTML = `
+                <img src="${foto}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
+                <button type="button" onclick="borrarFotoIndividual(${index})" style="position: absolute; top: 5px; right: 5px; background: #f56565; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;">×</button>
+                <p style="margin-top: 5px; font-size: 0.75em; color: #64748b; text-align: center;">Foto ${index + 1}</p>
+            `;
+            preview.appendChild(fotoDiv);
+        });
     }
     
     document.getElementById('modalEquipoTitle').textContent = 'Editar Equipo';
