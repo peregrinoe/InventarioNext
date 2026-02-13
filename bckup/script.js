@@ -642,19 +642,8 @@ function calcularVencimientoGarantia(fechaCompra, mesesGarantia) {
 
 // Generar sección de mantenimiento para detalle de equipo
 function generarSeccionMantenimiento(equipo) {
-    // Si no hay datos de mantenimiento, mostrar mensaje informativo
     if (!equipo.ultimoMantenimiento && !equipo.frecuenciaMantenimiento) {
-        return `
-            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 2px dashed #cbd5e0;">
-                <h3 style="margin: 0 0 10px 0; color: #64748b; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.5em;">🔧</span>
-                    Información de Mantenimiento
-                </h3>
-                <p style="margin: 0; color: #94a3b8; font-style: italic;">
-                    No se ha registrado información de mantenimiento para este equipo.
-                </p>
-            </div>
-        `;
+        return '';
     }
     
     const diasRestantes = diasHastaMantenimiento(equipo.ultimoMantenimiento, equipo.frecuenciaMantenimiento);
@@ -664,18 +653,15 @@ function generarSeccionMantenimiento(equipo) {
     let statusColor = '#10b981'; // Verde
     let statusIcon = '✅';
     let statusTexto = 'Al corriente';
-    let bgColor = '#f0fdf4'; // Fondo verde claro
     
     if (vencido) {
         statusColor = '#ef4444'; // Rojo
         statusIcon = '⚠️';
         statusTexto = 'VENCIDO';
-        bgColor = '#fee2e2'; // Fondo rojo claro
     } else if (diasRestantes !== null && diasRestantes <= 30) {
         statusColor = '#f59e0b'; // Amarillo
         statusIcon = '⏰';
         statusTexto = 'Próximo';
-        bgColor = '#fef3c7'; // Fondo amarillo claro
     }
     
     const frecuenciaTexto = {
@@ -685,77 +671,50 @@ function generarSeccionMantenimiento(equipo) {
     };
     
     return `
-        <div style="background: ${bgColor}; padding: 25px; border-radius: 12px; margin-bottom: 30px; border-left: 6px solid ${statusColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px; font-size: 1.3em;">
-                    <span style="font-size: 1.4em;">🔧</span>
-                    Información de Mantenimiento
-                </h3>
-                <span style="background: ${statusColor}; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <div style="background: ${vencido ? '#fee2e2' : '#f0fdf4'}; padding: 20px; border-radius: 12px; margin-bottom: 30px; border-left: 4px solid ${statusColor};">
+            <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.5em;">🔧</span>
+                Información de Mantenimiento
+                <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; margin-left: auto;">
                     ${statusIcon} ${statusTexto}
                 </span>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: ${vencido ? '20px' : '0'};">
-                <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                    <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📅 Último Mantenimiento</p>
-                    <p style="margin: 0; color: #1e293b; font-weight: 700; font-size: 1.3em;">
-                        ${equipo.ultimoMantenimiento ? new Date(equipo.ultimoMantenimiento).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No registrado'}
-                    </p>
-                </div>
-                
-                <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                    <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">⏱️ Frecuencia</p>
-                    <p style="margin: 0; color: #1e293b; font-weight: 700; font-size: 1.3em;">
-                        ${equipo.frecuenciaMantenimiento ? frecuenciaTexto[equipo.frecuenciaMantenimiento] : 'No definida'}
-                    </p>
-                </div>
-                
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                ${equipo.ultimoMantenimiento ? `
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Último Mantenimiento</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
+                            ${new Date(equipo.ultimoMantenimiento).toLocaleDateString()}
+                        </p>
+                    </div>
+                ` : ''}
+                ${equipo.frecuenciaMantenimiento ? `
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Frecuencia</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
+                            ${frecuenciaTexto[equipo.frecuenciaMantenimiento] || equipo.frecuenciaMantenimiento}
+                        </p>
+                    </div>
+                ` : ''}
                 ${proximoMtto ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 2px solid ${statusColor};">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">🔜 Próximo Mantenimiento</p>
-                        <p style="margin: 0; color: ${statusColor}; font-weight: 700; font-size: 1.3em;">
-                            ${proximoMtto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Próximo Mantenimiento</p>
+                        <p style="margin: 4px 0 0 0; color: ${statusColor}; font-weight: 600; font-size: 1.1em;">
+                            ${proximoMtto.toLocaleDateString()}
                         </p>
                     </div>
-                    
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 2px solid ${statusColor};">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">⏳ Días Restantes</p>
-                        <p style="margin: 0; color: ${statusColor}; font-weight: 700; font-size: 1.8em;">
-                            ${vencido ? Math.abs(diasRestantes) : diasRestantes}
-                        </p>
-                        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.8em;">
-                            ${vencido ? 'días de retraso' : 'días restantes'}
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Días Restantes</p>
+                        <p style="margin: 4px 0 0 0; color: ${statusColor}; font-weight: 600; font-size: 1.1em;">
+                            ${diasRestantes} días
                         </p>
                     </div>
-                ` : `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">🔜 Próximo Mantenimiento</p>
-                        <p style="margin: 0; color: #94a3b8; font-style: italic; font-size: 1.1em;">
-                            No se puede calcular
-                        </p>
-                        <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.8em;">
-                            Requiere último mantenimiento y frecuencia
-                        </p>
-                    </div>
-                `}
+                ` : ''}
             </div>
-            
             ${vencido ? `
-                <div style="margin-top: 0; padding: 15px; background: white; border-radius: 10px; border: 2px solid #ef4444;">
-                    <p style="margin: 0; color: #991b1b; font-weight: 700; font-size: 1.05em; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.5em;">⚠️</span>
-                        <span>¡ATENCIÓN! Este equipo requiere mantenimiento urgente.</span>
-                    </p>
-                    <p style="margin: 8px 0 0 0; color: #7f1d1d; font-size: 0.95em;">
-                        Han pasado <strong>${Math.abs(diasRestantes)} días</strong> desde la fecha programada para mantenimiento.
-                    </p>
-                </div>
-            ` : diasRestantes !== null && diasRestantes <= 30 ? `
-                <div style="margin-top: 0; padding: 15px; background: white; border-radius: 10px; border: 2px solid #f59e0b;">
-                    <p style="margin: 0; color: #92400e; font-weight: 600; font-size: 1em; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.3em;">⏰</span>
-                        <span>El mantenimiento está próximo. Considera programarlo pronto.</span>
+                <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fca5a5;">
+                    <p style="margin: 0; color: #991b1b; font-weight: 600;">
+                        ⚠️ Este equipo requiere mantenimiento urgente. Han pasado ${Math.abs(diasRestantes)} días desde la fecha programada.
                     </p>
                 </div>
             ` : ''}
@@ -765,111 +724,74 @@ function generarSeccionMantenimiento(equipo) {
 
 // Generar sección de información de compra para detalle de equipo
 function generarSeccionCompra(equipo) {
-    // Si no hay datos de compra, mostrar mensaje informativo
     if (!equipo.fechaCompra && !equipo.proveedor && !equipo.precio && !equipo.factura && !equipo.garantiaMeses) {
-        return `
-            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 2px dashed #cbd5e0;">
-                <h3 style="margin: 0 0 10px 0; color: #64748b; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.5em;">💰</span>
-                    Información de Compra y Garantía
-                </h3>
-                <p style="margin: 0; color: #94a3b8; font-style: italic;">
-                    No se ha registrado información de compra para este equipo.
-                </p>
-            </div>
-        `;
+        return '';
     }
     
     const enGarantia = garantiaVigente(equipo.fechaCompra, equipo.garantiaMeses);
     const fechaVencimiento = calcularVencimientoGarantia(equipo.fechaCompra, equipo.garantiaMeses);
     
-    let garantiaColor = enGarantia ? '#10b981' : '#94a3b8';
-    let garantiaBg = enGarantia ? '#f0fdf4' : '#f8fafc';
-    let garantiaIcon = enGarantia ? '🛡️' : '⏰';
-    let garantiaTexto = enGarantia ? 'EN GARANTÍA' : 'Garantía Vencida';
-    
     return `
-        <div style="background: ${garantiaBg}; padding: 25px; border-radius: 12px; margin-bottom: 30px; border-left: 6px solid ${garantiaColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px; font-size: 1.3em;">
-                    <span style="font-size: 1.4em;">💰</span>
-                    Información de Compra y Garantía
-                </h3>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;">
+            <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.5em;">💰</span>
+                Información de Compra y Garantía
                 ${equipo.garantiaMeses ? `
-                    <span style="background: ${garantiaColor}; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        ${garantiaIcon} ${garantiaTexto}
+                    <span style="background: ${enGarantia ? '#10b981' : '#94a3b8'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; margin-left: auto;">
+                        ${enGarantia ? '🛡️ En Garantía' : '⏰ Garantía Vencida'}
                     </span>
                 ` : ''}
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                 ${equipo.fechaCompra ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📅 Fecha de Compra</p>
-                        <p style="margin: 0; color: #1e293b; font-weight: 700; font-size: 1.2em;">
-                            ${new Date(equipo.fechaCompra).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Fecha de Compra</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
+                            ${new Date(equipo.fechaCompra).toLocaleDateString()}
                         </p>
                     </div>
                 ` : ''}
-                
                 ${equipo.proveedor ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">🏪 Proveedor</p>
-                        <p style="margin: 0; color: #1e293b; font-weight: 700; font-size: 1.2em;">
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Proveedor</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
                             ${equipo.proveedor}
                         </p>
                     </div>
                 ` : ''}
-                
                 ${equipo.precio ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">💵 Precio de Compra</p>
-                        <p style="margin: 0; color: #10b981; font-weight: 700; font-size: 1.4em;">
-                            $${parseFloat(equipo.precio).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Precio de Compra</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
+                            $${parseFloat(equipo.precio).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})} MXN
                         </p>
-                        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.8em;">MXN</p>
                     </div>
                 ` : ''}
-                
                 ${equipo.factura ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📄 Número de Factura</p>
-                        <p style="margin: 0; color: #1e293b; font-weight: 700; font-size: 1.2em; font-family: monospace;">
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Número de Factura</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
                             ${equipo.factura}
                         </p>
                     </div>
                 ` : ''}
-                
                 ${equipo.garantiaMeses ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 2px solid ${garantiaColor};">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">🛡️ Garantía</p>
-                        <p style="margin: 0; color: ${garantiaColor}; font-weight: 700; font-size: 1.4em;">
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Garantía</p>
+                        <p style="margin: 4px 0 0 0; color: #1e293b; font-weight: 600; font-size: 1.1em;">
                             ${equipo.garantiaMeses} meses
                         </p>
                     </div>
                 ` : ''}
-                
                 ${fechaVencimiento ? `
-                    <div style="background: white; padding: 15px; border-radius: 10px; border: 2px solid ${garantiaColor};">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">⏰ Vencimiento Garantía</p>
-                        <p style="margin: 0; color: ${garantiaColor}; font-weight: 700; font-size: 1.2em;">
-                            ${fechaVencimiento.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </p>
-                        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.8em;">
-                            ${enGarantia ? 'Vigente' : 'Vencida'}
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9em;">Vencimiento Garantía</p>
+                        <p style="margin: 4px 0 0 0; color: ${enGarantia ? '#10b981' : '#94a3b8'}; font-weight: 600; font-size: 1.1em;">
+                            ${fechaVencimiento.toLocaleDateString()}
                         </p>
                     </div>
                 ` : ''}
             </div>
-            
-            ${!enGarantia && equipo.garantiaMeses ? `
-                <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px; border: 2px solid #94a3b8;">
-                    <p style="margin: 0; color: #475569; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.3em;">ℹ️</span>
-                        <span>La garantía de este equipo ya ha vencido.</span>
-                    </p>
-                </div>
-            ` : ''}
         </div>
     `;
 }
