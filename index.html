@@ -32,6 +32,9 @@
             <button class="nav-btn" onclick="showSection('equipos')">
                 💻 Equipos
             </button>
+            <button class="nav-btn" onclick="showSection('celulares')">
+                📱 Celulares
+            </button>
             <button class="nav-btn" onclick="showSection('asignaciones')">
                 🔗 Asignaciones
             </button>
@@ -66,6 +69,25 @@
                     <div class="stat-card disponibles">
                         <h3>Equipos Disponibles</h3>
                         <div class="stat-value" id="equiposDisponibles">0</div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid" style="margin-top: 20px;">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <h3>Total Celulares</h3>
+                        <div class="stat-value" id="totalCelulares">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                        <h3>Celulares Asignados</h3>
+                        <div class="stat-value" id="celularesAsignados">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                        <h3>Celulares Disponibles</h3>
+                        <div class="stat-value" id="celularesDisponibles">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);">
+                        <h3>Total Licencias</h3>
+                        <div class="stat-value" id="totalLicencias">0</div>
                     </div>
                 </div>
                 
@@ -196,6 +218,75 @@
                                     <div class="empty-state-icon">💻</div>
                                     <h3>No hay equipos registrados</h3>
                                     <p>Haz clic en "Nuevo Equipo" para comenzar</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- CELULARES -->
+            <section id="celulares" class="section">
+                <div class="section-header">
+                    <h2>Celulares</h2>
+                    <button class="btn btn-primary" onclick="openModal('modalCelular')">
+                        ➕ Nuevo Celular
+                    </button>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <div class="search-box" style="flex: 1; min-width: 250px; margin-bottom: 0;">
+                        <input type="text" id="searchCelular" placeholder="🔍 Buscar celular..." onkeyup="filterCelulares()">
+                    </div>
+                    <div style="min-width: 180px;">
+                        <select id="filterEstadoCelular" onchange="filterCelulares()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">🔍 Todos los Estados</option>
+                            <option value="Disponible">Disponible</option>
+                            <option value="Asignado">Asignado</option>
+                            <option value="En Reparación">En Reparación</option>
+                            <option value="Dado de Baja">Dado de Baja</option>
+                        </select>
+                    </div>
+                    <div style="min-width: 180px;">
+                        <select id="filterCompania" onchange="filterCelulares()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">📡 Todas las Compañías</option>
+                            <option value="Telcel">Telcel</option>
+                            <option value="AT&T">AT&T</option>
+                            <option value="Movistar">Movistar</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div style="min-width: 160px;">
+                        <select id="filterPropiedadCelular" onchange="filterCelulares()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">🏢 Todas las Propiedades</option>
+                            <option value="Empresa">🏢 Empresa</option>
+                            <option value="Propio">👤 Propio</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Marca</th>
+                                <th>Modelo</th>
+                                <th>Número</th>
+                                <th>Compañía</th>
+                                <th>IMEI</th>
+                                <th>Propiedad</th>
+                                <th>Estado</th>
+                                <th>Asignado a</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="celularesTableBody">
+                            <tr>
+                                <td colspan="10" class="empty-state">
+                                    <div class="empty-state-icon">📱</div>
+                                    <h3>No hay celulares registrados</h3>
+                                    <p>Haz clic en "Nuevo Celular" para comenzar</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -605,6 +696,145 @@
         </div>
     </div>
     
+    <!-- MODAL CELULAR -->
+    <div id="modalCelular" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalCelularTitle">Nuevo Celular</h3>
+                <button class="close-modal" onclick="closeModal('modalCelular')">&times;</button>
+            </div>
+            <form id="formCelular" onsubmit="saveCelular(event)">
+                <input type="hidden" id="celularId">
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Fotos del Estado Actual del Celular (Frente, Trasera, Pantalla, etc.)</label>
+                    <input type="file" id="celularFotosInput" accept="image/*" multiple onchange="previewMultipleCelularImages(event)">
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('celularFotosInput').click()">📷 Seleccionar Fotos</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="borrarTodasFotosCelular()">🗑️ Borrar Todas las Fotos</button>
+                    </div>
+                    <p style="margin-top: 8px; font-size: 0.85em; color: #64748b;">💡 Puedes seleccionar múltiples fotos: frente, trasera, pantalla, laterales, caja, etc.</p>
+                    <div id="celularFotosPreview" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;"></div>
+                    <input type="hidden" id="celularFotos">
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Marca *</label>
+                        <input type="text" id="celularMarca" required placeholder="Ej: iPhone, Samsung, Xiaomi">
+                    </div>
+                    <div class="form-group">
+                        <label>Modelo *</label>
+                        <input type="text" id="celularModelo" required placeholder="Ej: iPhone 13 Pro, Galaxy S23">
+                    </div>
+                    <div class="form-group">
+                        <label>Número Telefónico *</label>
+                        <input type="text" id="celularNumero" required placeholder="Ej: 555-123-4567">
+                    </div>
+                    <div class="form-group">
+                        <label>Compañía *</label>
+                        <select id="celularCompania" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Telcel">Telcel</option>
+                            <option value="AT&T">AT&T</option>
+                            <option value="Movistar">Movistar</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>IMEI *</label>
+                        <input type="text" id="celularIMEI" required placeholder="15 dígitos">
+                    </div>
+                    <div class="form-group">
+                        <label>Número de Serie</label>
+                        <input type="text" id="celularNumSerie" placeholder="Número de serie del fabricante">
+                    </div>
+                    <div class="form-group">
+                        <label>Propiedad *</label>
+                        <select id="celularPropiedad" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Empresa">🏢 Empresa</option>
+                            <option value="Propio">👤 Propio del Colaborador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Capacidad de Almacenamiento</label>
+                        <select id="celularAlmacenamiento">
+                            <option value="">Seleccionar...</option>
+                            <option value="64GB">64GB</option>
+                            <option value="128GB">128GB</option>
+                            <option value="256GB">256GB</option>
+                            <option value="512GB">512GB</option>
+                            <option value="1TB">1TB</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Color</label>
+                        <input type="text" id="celularColor" placeholder="Ej: Negro, Blanco, Azul">
+                    </div>
+                    <div class="form-group">
+                        <label>Sistema Operativo</label>
+                        <select id="celularSO">
+                            <option value="">Seleccionar...</option>
+                            <option value="iOS">iOS</option>
+                            <option value="Android">Android</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Compra</label>
+                        <input type="date" id="celularFechaCompra">
+                    </div>
+                    <div class="form-group">
+                        <label>Proveedor</label>
+                        <input type="text" id="celularProveedor" placeholder="Ej: Apple Store, Liverpool">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio de Compra (MXN)</label>
+                        <input type="number" id="celularPrecio" placeholder="15000" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Número de Factura</label>
+                        <input type="text" id="celularFactura" placeholder="Ej: FAC-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label>Garantía (meses)</label>
+                        <input type="number" id="celularGarantia" placeholder="12">
+                    </div>
+                    <div class="form-group">
+                        <label>Plan Contratado</label>
+                        <input type="text" id="celularPlan" placeholder="Ej: Plan Max Sin Límite 3000">
+                    </div>
+                    <div class="form-group">
+                        <label>Costo Mensual del Plan (MXN)</label>
+                        <input type="number" id="celularCostoPlan" placeholder="500" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Renovación del Plan</label>
+                        <input type="date" id="celularRenovacionPlan">
+                    </div>
+                    <div class="form-group">
+                        <label>Estado *</label>
+                        <select id="celularEstado" required>
+                            <option value="Disponible">Disponible</option>
+                            <option value="Asignado">Asignado</option>
+                            <option value="En Reparación">En Reparación</option>
+                            <option value="Dado de Baja">Dado de Baja</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observaciones</label>
+                    <textarea id="celularObservaciones" placeholder="Accesorios incluidos, condición, etc."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">💾 Guardar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalCelular')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- MODAL ASIGNACIÓN -->
     <div id="modalAsignacion" class="modal">
         <div class="modal-content">
@@ -775,12 +1005,33 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL DETALLE CELULAR -->
+    <div id="modalDetalleCelular" class="modal">
+        <div class="modal-content modal-detail">
+            <div class="modal-header">
+                <h3>Detalle del Celular</h3>
+                <button class="close-modal" onclick="closeModal('modalDetalleCelular')">&times;</button>
+            </div>
+            <div id="detalleCelularContent">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
     
     <!-- NOTIFICACIONES -->
     <div id="notification" class="notification">
         <span id="notificationText"></span>
     </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="./script.js"></script>
+<script src="./js/database.js"></script>
+<script src="./js/images.js"></script>
+<script src="./js/colaboradores.js"></script>
+<script src="./js/equipos.js"></script>
+<script src="./js/celulares.js"></script>
+<script src="./js/asignaciones.js"></script>
+<script src="./js/licencias.js"></script>
+<script src="./js/dashboard.js"></script>
+<script src="./js/reportes.js"></script>
 </body>
 </html>

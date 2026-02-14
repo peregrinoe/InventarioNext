@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+</head>
+<body>
+    <h1>Test de Importación</h1>
+    <button onclick="testData()">Ver Datos en LocalStorage</button>
+    <button onclick="clearData()">Limpiar Todo</button>
+    <div id="output"></div>
+    
+    <script>
+        function testData() {
+            const data = localStorage.getItem('inventarioDB');
+            if (data) {
+                const parsed = JSON.parse(data);
+                document.getElementById('output').innerHTML = `
+                    <pre>${JSON.stringify(parsed, null, 2).substring(0, 2000)}</pre>
+                    <p>Colaboradores: ${parsed.colaboradores?.length || 0}</p>
+                    <p>Equipos: ${parsed.equipos?.length || 0}</p>
+                    <p>Celulares: ${parsed.celulares?.length || 0}</p>
+                `;
+            } else {
+                document.getElementById('output').innerHTML = 'No hay datos';
+            }
+        }
+        
+        function clearData() {
+            localStorage.clear();
+            alert('Datos limpiados');
+        }
+    </script>
+</body>
+</html>
