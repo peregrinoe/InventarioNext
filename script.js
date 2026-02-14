@@ -333,6 +333,11 @@ function verDetalleColaborador(id) {
         a.colaboradorId === id && a.estado === 'Activa'
     );
     
+    // Historial completo de asignaciones
+    const historialAsignaciones = database.asignaciones
+        .filter(a => a.colaboradorId === id)
+        .sort((a, b) => new Date(b.fechaAsignacion) - new Date(a.fechaAsignacion));
+    
     // Obtener licencias asignadas usando la nueva tabla de asignaciones
     const licenciasAsignacionesCol = database.licenciasAsignaciones.filter(la => 
         la.colaboradorId === id
@@ -365,6 +370,39 @@ function verDetalleColaborador(id) {
             </div>
         `;
     }).join('');
+    
+    // Generar HTML del historial de asignaciones
+    const historialHTML = historialAsignaciones.length > 0 ? historialAsignaciones.map(asig => {
+        const equipo = database.equipos.find(e => e._id === asig.equipoId);
+        if (!equipo) return '';
+        
+        const estadoBadgeAsig = asig.estado === 'Activa' ? 'badge-success' : 'badge-warning';
+        
+        // Obtener foto del equipo para el historial
+        const fotos = equipo.fotos || (equipo.foto ? [equipo.foto] : []);
+        const fotoEquipoHistorial = fotos.length > 0 ? 
+            `<img src="${fotos[0]}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">` :
+            `<div style="width: 60px; height: 60px; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; border-radius: 8px;">💻</div>`;
+        
+        return `
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: white;">
+                <div style="display: flex; gap: 12px; align-items: start;">
+                    ${fotoEquipoHistorial}
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <h4 style="margin: 0; color: #1e293b;">${equipo.marca} ${equipo.modelo}</h4>
+                            <span class="badge ${estadoBadgeAsig}">${asig.estado}</span>
+                        </div>
+                        <p style="margin: 4px 0; color: #64748b; font-size: 0.9em;"><strong>Tipo:</strong> ${equipo.tipo}</p>
+                        <p style="margin: 4px 0; color: #64748b; font-size: 0.9em;"><strong>Serie:</strong> ${equipo.numSerie}</p>
+                        <p style="margin: 4px 0; color: #64748b; font-size: 0.9em;"><strong>Asignado:</strong> ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
+                        ${asig.fechaDevolucion ? `<p style="margin: 4px 0; color: #64748b; font-size: 0.9em;"><strong>Devuelto:</strong> ${new Date(asig.fechaDevolucion).toLocaleDateString()}</p>` : ''}
+                        ${asig.observaciones ? `<p style="margin: 8px 0 0 0; color: #64748b; font-size: 0.9em; font-style: italic;">${asig.observaciones}</p>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('') : '<p style="color: #94a3b8; text-align: center;">No hay historial de asignaciones</p>';
     
     const licenciasHTML = licenciasAsignacionesCol.length > 0 ? licenciasAsignacionesCol.map(licAsig => {
         const lic = database.licencias.find(l => l._id === licAsig.licenciaId);
@@ -412,9 +450,14 @@ function verDetalleColaborador(id) {
             </div>
         </div>
         
-        <h3 style="margin: 25px 0 15px 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">💻 Equipos Asignados</h3>
+        <h3 style="margin: 25px 0 15px 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">💻 Equipos Asignados Actualmente</h3>
         <div style="display: grid; gap: 15px;">
             ${equiposHTML || '<p style="color: #94a3b8; text-align: center;">No tiene equipos asignados actualmente</p>'}
+        </div>
+        
+        <h3 style="margin: 25px 0 15px 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">📜 Historial de Equipos</h3>
+        <div style="display: grid; gap: 12px;">
+            ${historialHTML}
         </div>
         
         <h3 style="margin: 25px 0 15px 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">🔑 Licencias de Software</h3>
