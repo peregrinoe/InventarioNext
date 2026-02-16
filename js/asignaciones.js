@@ -88,7 +88,9 @@ function renderAsignaciones() {
         `;
     }).join('');
     
-    updateDashboardTable();
+    if (typeof updateDashboardTable === 'function') {
+        updateDashboardTable();
+    }
 }
 
 function devolverEquipo(asignacionId) {

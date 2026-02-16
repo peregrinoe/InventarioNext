@@ -85,37 +85,37 @@ function importarDatos(event) {
             
             // Renderizar todas las secciones
             try {
-                renderColaboradores();
+                if (typeof renderColaboradores === 'function') renderColaboradores();
             } catch (e) {
                 console.error('Error al renderizar colaboradores:', e);
             }
             
             try {
-                renderEquipos();
+                if (typeof renderEquipos === 'function') renderEquipos();
             } catch (e) {
                 console.error('Error al renderizar equipos:', e);
             }
             
             try {
-                renderCelulares();
+                if (typeof renderCelulares === 'function') renderCelulares();
             } catch (e) {
                 console.error('Error al renderizar celulares:', e);
             }
             
             try {
-                renderAsignaciones();
+                if (typeof renderAsignaciones === 'function') renderAsignaciones();
             } catch (e) {
                 console.error('Error al renderizar asignaciones:', e);
             }
             
             try {
-                renderLicencias();
+                if (typeof renderLicencias === 'function') renderLicencias();
             } catch (e) {
                 console.error('Error al renderizar licencias:', e);
             }
             
             try {
-                updateDashboard();
+                if (typeof updateDashboard === 'function') updateDashboard();
             } catch (e) {
                 console.error('Error al actualizar dashboard:', e);
             }
@@ -148,8 +148,23 @@ function importarDatos(event) {
 function loadData() {
     const savedData = localStorage.getItem('inventarioDB');
     if (savedData) {
-        database = JSON.parse(savedData);
+        try {
+            database = JSON.parse(savedData);
+            console.log('✅ Datos cargados:', database);
+        } catch (e) {
+            console.error('Error al parsear datos:', e);
+            database = {
+                colaboradores: [],
+                equipos: [],
+                celulares: [],
+                asignaciones: [],
+                asignacionesCelulares: [],
+                licencias: [],
+                licenciasAsignaciones: []
+            };
+        }
     }
+    
     // Asegurar que existan los arrays necesarios
     if (!database.licencias) {
         database.licencias = [];
@@ -163,17 +178,67 @@ function loadData() {
     if (!database.asignacionesCelulares) {
         database.asignacionesCelulares = [];
     }
-    updateDashboard();
-    renderColaboradores();
-    renderEquipos();
-    renderCelulares();
-    renderAsignaciones();
-    renderLicencias();
+    
+    // Llamar a las funciones de renderizado solo si existen
+    // Esto evita errores si los scripts aún no se han cargado
+    try {
+        if (typeof updateDashboard === 'function') {
+            updateDashboard();
+        }
+    } catch (e) {
+        console.error('Error en updateDashboard:', e);
+    }
+    
+    try {
+        if (typeof renderColaboradores === 'function') {
+            renderColaboradores();
+        }
+    } catch (e) {
+        console.error('Error en renderColaboradores:', e);
+    }
+    
+    try {
+        if (typeof renderEquipos === 'function') {
+            renderEquipos();
+        }
+    } catch (e) {
+        console.error('Error en renderEquipos:', e);
+    }
+    
+    try {
+        if (typeof renderCelulares === 'function') {
+            renderCelulares();
+        }
+    } catch (e) {
+        console.error('Error en renderCelulares:', e);
+    }
+    
+    try {
+        if (typeof renderAsignaciones === 'function') {
+            renderAsignaciones();
+        }
+    } catch (e) {
+        console.error('Error en renderAsignaciones:', e);
+    }
+    
+    try {
+        if (typeof renderLicencias === 'function') {
+            renderLicencias();
+        }
+    } catch (e) {
+        console.error('Error en renderLicencias:', e);
+    }
 }
 
 // Guardar datos en localStorage
 function saveData() {
-    localStorage.setItem('inventarioDB', JSON.stringify(database));
+    try {
+        localStorage.setItem('inventarioDB', JSON.stringify(database));
+        console.log('✅ Datos guardados');
+    } catch (e) {
+        console.error('Error al guardar datos:', e);
+        showNotification('❌ Error al guardar datos', 'error');
+    }
 }
 
 // Funciones de navegación
@@ -194,10 +259,10 @@ function showSection(sectionId) {
     
     // Actualizar tablas y estadísticas según la sección
     if (sectionId === 'dashboard') {
-        updateDashboard();
-        updateDashboardTable();
+        if (typeof updateDashboard === 'function') updateDashboard();
+        if (typeof updateDashboardTable === 'function') updateDashboardTable();
     } else if (sectionId === 'reportes') {
-        updateReportesStats();
+        if (typeof updateReportesStats === 'function') updateReportesStats();
     }
 }
 
@@ -207,24 +272,28 @@ function openModal(modalId) {
     // Limpiar formularios al abrir modal de crear nuevo
     if (modalId === 'modalColaborador' && !document.getElementById('colaboradorId').value) {
         document.getElementById('formColaborador').reset();
-        document.getElementById('colaboradorFotoPreview').innerHTML = '';
+        const preview = document.getElementById('colaboradorFotoPreview');
+        if (preview) preview.innerHTML = '';
         document.getElementById('modalColaboradorTitle').textContent = 'Nuevo Colaborador';
     }
     if (modalId === 'modalEquipo' && !document.getElementById('equipoId').value) {
         document.getElementById('formEquipo').reset();
-        document.getElementById('equipoFotosPreview').innerHTML = '';
+        const preview = document.getElementById('equipoFotosPreview');
+        if (preview) preview.innerHTML = '';
         document.getElementById('modalEquipoTitle').textContent = 'Nuevo Equipo';
     }
     if (modalId === 'modalCelular' && !document.getElementById('celularId').value) {
         document.getElementById('formCelular').reset();
-        document.getElementById('celularFotosPreview').innerHTML = '';
+        const preview = document.getElementById('celularFotosPreview');
+        if (preview) preview.innerHTML = '';
         document.getElementById('modalCelularTitle').textContent = 'Nuevo Celular';
     }
     if (modalId === 'modalAsignacion') {
         document.getElementById('formAsignacion').reset();
-        loadColaboradoresSelect();
-        loadEquiposSelect();
-        document.getElementById('asignacionFecha').valueAsDate = new Date();
+        if (typeof loadColaboradoresSelect === 'function') loadColaboradoresSelect();
+        if (typeof loadEquiposSelect === 'function') loadEquiposSelect();
+        const fechaInput = document.getElementById('asignacionFecha');
+        if (fechaInput) fechaInput.valueAsDate = new Date();
     }
     if (modalId === 'modalLicencia' && !document.getElementById('licenciaId').value) {
         document.getElementById('formLicencia').reset();
@@ -243,5 +312,10 @@ window.onclick = function(event) {
     }
 }
 
-// Cargar datos al iniciar
-window.onload = loadData;
+// Cargar datos al iniciar - usar DOMContentLoaded para asegurar que todo esté cargado
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadData);
+} else {
+    // Si el documento ya está cargado, ejecutar inmediatamente
+    loadData();
+}

@@ -129,3 +129,4 @@ function updateReportesStats() {
     if (valorElem) {
         valorElem.textContent = '$' + valorTotal.toLocaleString('es-MX', {minimumFractionDigits: 0, maximumFractionDigits: 0});
     }
+}

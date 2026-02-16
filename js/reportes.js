@@ -1,4 +1,4 @@
-    
+function actualizarDashboard() {
     // Equipos en garantía
     const equiposGarantia = database.equipos.filter(eq => 
         garantiaVigente(eq.fechaCompra, eq.garantiaMeses)
@@ -69,8 +69,8 @@ function generarReporteGeneral() {
     const equiposData = database.equipos.map(eq => {
         const asignacion = database.asignaciones.find(a => a.equipoId === eq._id && a.estado === 'Activa');
         const colaborador = asignacion ? database.colaboradores.find(c => c._id === asignacion.colaboradorId) : null;
-        const proximoMtto = calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
-        const enGarantia = garantiaVigente(eq.fechaCompra, eq.garantiaMeses);
+        const proximoMtto = calcularProximoMantenimiento ? calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento) : null;
+        const enGarantia = garantiaVigente ? garantiaVigente(eq.fechaCompra, eq.garantiaMeses) : false;
         
         return {
             'ID Interno': eq.idInterno || '',
@@ -189,7 +189,7 @@ function generarReporteEquipos() {
     
     const fecha = new Date().toISOString().split('T')[0];
     descargarExcel(wb, `Inventario_Equipos_${fecha}.xlsx`);
-    showNotification('✅ Inventario de equipos descargado', 'success');
+    showNotification('✅ Reporte de equipos descargado', 'success');
 }
 
 // Reporte de Colaboradores
@@ -198,94 +198,87 @@ function generarReporteColaboradores() {
     
     const colaboradoresData = database.colaboradores.map(col => {
         const equiposAsignados = database.asignaciones.filter(a => a.colaboradorId === col._id && a.estado === 'Activa');
-        const licenciasAsignadas = database.licenciasAsignaciones.filter(la => la.colaboradorId === col._id);
-        
-        const equiposDetalle = equiposAsignados.map(asig => {
-            const equipo = database.equipos.find(e => e._id === asig.equipoId);
-            return equipo ? `${equipo.marca} ${equipo.modelo}` : '';
-        }).join(', ');
+        const licenciasAsignadas = database.licenciasAsignaciones ? database.licenciasAsignaciones.filter(la => la.colaboradorId === col._id) : [];
         
         return {
             'Nombre Completo': col.nombre,
-            'Email': col.email,
+            'Email Corporativo': col.email,
             'Teléfono': col.telefono || '',
             'Departamento': col.departamento,
             'Puesto': col.puesto,
             'Fecha de Ingreso': col.fechaIngreso ? new Date(col.fechaIngreso).toLocaleDateString() : '',
             'Jefe Inmediato': col.jefeInmediato || '',
-            'Cantidad Equipos': equiposAsignados.length,
-            'Equipos Asignados': equiposDetalle,
-            'Cantidad Licencias': licenciasAsignadas.length
+            'Equipos Asignados': equiposAsignados.length,
+            'Licencias Asignadas': licenciasAsignadas.length,
+            'Estado': equiposAsignados.length > 0 ? 'Activo con Equipos' : 'Sin Equipos'
         };
     });
     
-    agregarHoja(wb, 'Directorio', colaboradoresData);
+    agregarHoja(wb, 'Colaboradores', colaboradoresData);
     
     const fecha = new Date().toISOString().split('T')[0];
-    descargarExcel(wb, `Directorio_Colaboradores_${fecha}.xlsx`);
-    showNotification('✅ Directorio de colaboradores descargado', 'success');
+    descargarExcel(wb, `Reporte_Colaboradores_${fecha}.xlsx`);
+    showNotification('✅ Reporte de colaboradores descargado', 'success');
 }
 
-// Reporte de Licencias
-function generarReporteLicencias() {
+// Reporte de Equipos por Estado
+function generarReporteEquiposPorEstado() {
     const wb = crearLibroExcel();
     
-    const licenciasData = database.licencias.map(lic => {
-        const asignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId === lic._id);
-        const usuarios = asignaciones.map(asig => {
-            const col = database.colaboradores.find(c => c._id === asig.colaboradorId);
-            return col ? col.nombre : '';
-        }).join(', ');
+    const estados = ['Disponible', 'Asignado', 'En Reparación', 'De Baja'];
+    
+    estados.forEach(estado => {
+        const equiposEstado = database.equipos.filter(eq => eq.estado === estado);
         
-        return {
-            'Software': lic.software,
-            'Tipo de Licencia': lic.tipo,
-            'Clave/Serial': lic.clave || '',
-            'Estado': lic.estado,
-            'Cantidad Usuarios': asignaciones.length,
-            'Usuarios Asignados': usuarios,
-            'Fecha de Compra': lic.fechaCompra ? new Date(lic.fechaCompra).toLocaleDateString() : '',
-            'Fecha de Vencimiento': lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '',
-            'Notas': lic.notas || ''
-        };
+        if (equiposEstado.length > 0) {
+            const data = equiposEstado.map(eq => {
+                const asignacion = database.asignaciones.find(a => a.equipoId === eq._id && a.estado === 'Activa');
+                const colaborador = asignacion ? database.colaboradores.find(c => c._id === asignacion.colaboradorId) : null;
+                
+                return {
+                    'Tipo': eq.tipo,
+                    'Marca': eq.marca,
+                    'Modelo': eq.modelo,
+                    'Serie': eq.numSerie,
+                    'Categoría': eq.categoria ? `Cat. ${eq.categoria}` : '',
+                    'Asignado a': colaborador ? colaborador.nombre : '',
+                    'Departamento': colaborador ? colaborador.departamento : '',
+                    'Observaciones': eq.observaciones || ''
+                };
+            });
+            
+            agregarHoja(wb, estado, data);
+        }
     });
     
-    agregarHoja(wb, 'Licencias', licenciasData);
-    
     const fecha = new Date().toISOString().split('T')[0];
-    descargarExcel(wb, `Licencias_${fecha}.xlsx`);
-    showNotification('✅ Reporte de licencias descargado', 'success');
+    descargarExcel(wb, `Equipos_Por_Estado_${fecha}.xlsx`);
+    showNotification('✅ Reporte de equipos por estado descargado', 'success');
 }
 
-// Reporte de Mantenimientos
-function generarReporteMantenimiento() {
+// Reporte de Calendario de Mantenimientos
+function generarCalendarioMantenimientos() {
     const wb = crearLibroExcel();
     
     const mantenimientosData = database.equipos
         .filter(eq => eq.ultimoMantenimiento && eq.frecuenciaMantenimiento)
         .map(eq => {
-            const proximoMtto = calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
-            const dias = diasHastaMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
-            const vencido = mantenimientoVencido(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
-            const asignacion = database.asignaciones.find(a => a.equipoId === eq._id && a.estado === 'Activa');
-            const colaborador = asignacion ? database.colaboradores.find(c => c._id === asignacion.colaboradorId) : null;
+            const proximoMtto = calcularProximoMantenimiento ? calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento) : null;
+            const diasRestantes = proximoMtto ? Math.ceil((proximoMtto - new Date()) / (1000 * 60 * 60 * 24)) : null;
             
             return {
                 'Equipo': `${eq.marca} ${eq.modelo}`,
                 'Serie': eq.numSerie,
-                'ID Interno': eq.idInterno || '',
-                'Asignado a': colaborador ? colaborador.nombre : 'Disponible',
-                'Departamento': colaborador ? colaborador.departamento : '',
                 'Último Mantenimiento': new Date(eq.ultimoMantenimiento).toLocaleDateString(),
-                'Frecuencia (meses)': eq.frecuenciaMantenimiento,
+                'Frecuencia (días)': eq.frecuenciaMantenimiento,
                 'Próximo Mantenimiento': proximoMtto ? proximoMtto.toLocaleDateString() : '',
-                'Días Restantes': dias !== null ? dias : '',
-                'Estado': vencido ? 'VENCIDO' : (dias <= 30 ? 'PRÓXIMO' : 'Al corriente')
+                'Días Restantes': diasRestantes !== null ? diasRestantes : '',
+                'Estado': diasRestantes < 0 ? 'VENCIDO' : diasRestantes < 7 ? 'URGENTE' : 'PROGRAMADO'
             };
         })
         .sort((a, b) => (a['Días Restantes'] || 999) - (b['Días Restantes'] || 999));
     
-    agregarHoja(wb, 'Calendario Mttos', mantenimientosData);
+    agregarHoja(wb, 'Calendario Mantenimientos', mantenimientosData);
     
     const fecha = new Date().toISOString().split('T')[0];
     descargarExcel(wb, `Calendario_Mantenimientos_${fecha}.xlsx`);
@@ -297,27 +290,33 @@ function generarReporteMantenimientoVencido() {
     const wb = crearLibroExcel();
     
     const vencidosData = database.equipos
-        .filter(eq => mantenimientoVencido(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento))
+        .filter(eq => eq.ultimoMantenimiento && eq.frecuenciaMantenimiento)
+        .filter(eq => {
+            if (typeof mantenimientoVencido === 'function') {
+                return mantenimientoVencido(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
+            }
+            return false;
+        })
         .map(eq => {
-            const proximoMtto = calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
-            const dias = diasHastaMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento);
             const asignacion = database.asignaciones.find(a => a.equipoId === eq._id && a.estado === 'Activa');
             const colaborador = asignacion ? database.colaboradores.find(c => c._id === asignacion.colaboradorId) : null;
+            const proximoMtto = calcularProximoMantenimiento ? calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento) : null;
+            const diasVencido = proximoMtto ? Math.ceil((new Date() - proximoMtto) / (1000 * 60 * 60 * 24)) : null;
             
             return {
                 'Equipo': `${eq.marca} ${eq.modelo}`,
                 'Serie': eq.numSerie,
-                'Asignado a': colaborador ? colaborador.nombre : 'Disponible',
+                'Asignado a': colaborador ? colaborador.nombre : 'Sin asignar',
                 'Departamento': colaborador ? colaborador.departamento : '',
-                'Email': colaborador ? colaborador.email : '',
                 'Último Mantenimiento': new Date(eq.ultimoMantenimiento).toLocaleDateString(),
-                'Debió realizarse el': proximoMtto ? proximoMtto.toLocaleDateString() : '',
-                'Días de Retraso': Math.abs(dias)
+                'Debió Realizarse': proximoMtto ? proximoMtto.toLocaleDateString() : '',
+                'Días Vencido': diasVencido !== null ? diasVencido : '',
+                'Prioridad': diasVencido > 30 ? 'ALTA' : 'MEDIA'
             };
         })
-        .sort((a, b) => b['Días de Retraso'] - a['Días de Retraso']);
+        .sort((a, b) => (b['Días Vencido'] || 0) - (a['Días Vencido'] || 0));
     
-    agregarHoja(wb, 'Mttos Vencidos', vencidosData);
+    agregarHoja(wb, 'Mantenimientos Vencidos', vencidosData);
     
     const fecha = new Date().toISOString().split('T')[0];
     descargarExcel(wb, `Mantenimientos_Vencidos_${fecha}.xlsx`);
@@ -331,8 +330,8 @@ function generarReporteGarantias() {
     const garantiasData = database.equipos
         .filter(eq => eq.fechaCompra && eq.garantiaMeses)
         .map(eq => {
-            const enGarantia = garantiaVigente(eq.fechaCompra, eq.garantiaMeses);
-            const fechaVencimiento = calcularVencimientoGarantia(eq.fechaCompra, eq.garantiaMeses);
+            const enGarantia = garantiaVigente ? garantiaVigente(eq.fechaCompra, eq.garantiaMeses) : false;
+            const fechaVencimiento = calcularVencimientoGarantia ? calcularVencimientoGarantia(eq.fechaCompra, eq.garantiaMeses) : null;
             
             return {
                 'Equipo': `${eq.marca} ${eq.modelo}`,
@@ -460,51 +459,3 @@ function generarReportePorCategoria() {
     descargarExcel(wb, `Distribucion_Categorias_${fecha}.xlsx`);
     showNotification('✅ Reporte de distribución por categoría descargado', 'success');
 }
-
-// ================================
-// FUNCIONES PARA CELULARES
-// ================================
-
-// Preview de múltiples imágenes para celulares
-function previewMultipleCelularImages(event) {
-    const files = event.target.files;
-    const preview = document.getElementById('celularFotosPreview');
-    const fotosArray = [];
-    
-    if (files.length > 0) {
-        preview.innerHTML = '';
-        let loadedCount = 0;
-        
-        Array.from(files).forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                fotosArray.push(e.target.result);
-                
-                const fotoDiv = document.createElement('div');
-                fotoDiv.style.position = 'relative';
-                fotoDiv.innerHTML = `
-                    <img src="${e.target.result}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
-                    <button type="button" onclick="borrarFotoCelularIndividual(${index})" style="position: absolute; top: 5px; right: 5px; background: #f56565; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;">×</button>
-                    <p style="margin-top: 5px; font-size: 0.75em; color: #64748b; text-align: center;">Foto ${index + 1}</p>
-                `;
-                preview.appendChild(fotoDiv);
-                
-                loadedCount++;
-                if (loadedCount === files.length) {
-                    document.getElementById('celularFotos').value = JSON.stringify(fotosArray);
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-}
-
-// Borrar foto individual del celular
-function borrarFotoCelularIndividual(index) {
-    const fotosHidden = document.getElementById('celularFotos').value;
-    if (fotosHidden) {
-        let fotosArray = JSON.parse(fotosHidden);
-        fotosArray.splice(index, 1);
-        document.getElementById('celularFotos').value = JSON.stringify(fotosArray);
-        
-        // Re-renderizar las fotos
