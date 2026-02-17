@@ -3,6 +3,11 @@ function updateAsignacionSelects() {
     const selectColaborador = document.getElementById('asignacionColaborador');
     const selectEquipo = document.getElementById('asignacionEquipo');
     
+    if (!selectColaborador || !selectEquipo) {
+        console.error('Elementos de select no encontrados');
+        return;
+    }
+    
     selectColaborador.innerHTML = '<option value="">Seleccionar colaborador...</option>' +
         database.colaboradores.map(col => 
             `<option value="${col._id}">${col.nombre} - ${col.departamento}</option>`
@@ -15,38 +20,153 @@ function updateAsignacionSelects() {
         ).join('');
 }
 
+// FUNCIÓN PARA ABRIR MODAL DE NUEVA ASIGNACIÓN (NUEVA)
+function abrirNuevaAsignacion() {
+    // Limpiar el formulario
+    const form = document.getElementById('formAsignacion');
+    if (form) {
+        form.reset();
+    }
+    
+    // Verificar o crear el campo asignacionId
+    let asignacionIdInput = document.getElementById('asignacionId');
+    if (!asignacionIdInput) {
+        asignacionIdInput = document.createElement('input');
+        asignacionIdInput.type = 'hidden';
+        asignacionIdInput.id = 'asignacionId';
+        form.prepend(asignacionIdInput);
+    }
+    
+    // IMPORTANTE: Limpiar el valor del ID para que sea una nueva asignación
+    asignacionIdInput.value = '';
+    
+    // Establecer fecha actual
+    const fechaInput = document.getElementById('asignacionFecha');
+    if (fechaInput) {
+        fechaInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Establecer estado por defecto
+    const estadoSelect = document.getElementById('asignacionEstado');
+    if (estadoSelect) {
+        estadoSelect.value = 'Activa';
+    }
+    
+    // Cargar los selects
+    updateAsignacionSelects();
+    
+    // Cambiar título del modal
+    const modalTitle = document.getElementById('modalAsignacionTitle');
+    if (modalTitle) {
+        modalTitle.textContent = 'Nueva Asignación';
+    }
+    
+    // Cambiar texto del botón
+    const btnSubmit = document.querySelector('#modalAsignacion .btn-success');
+    if (btnSubmit) {
+        btnSubmit.innerHTML = '💾 Asignar Equipo';
+    }
+    
+    // Abrir el modal
+    openModal('modalAsignacion');
+}
+
 function saveAsignacion(event) {
     event.preventDefault();
     
+    // Verificar que exista el campo asignacionId
+    let asignacionIdInput = document.getElementById('asignacionId');
+    if (!asignacionIdInput) {
+        // Si no existe, crearlo dinámicamente
+        asignacionIdInput = document.createElement('input');
+        asignacionIdInput.type = 'hidden';
+        asignacionIdInput.id = 'asignacionId';
+        document.getElementById('formAsignacion').prepend(asignacionIdInput);
+    }
+    
+    const asignacionId = asignacionIdInput.value;
     const colaboradorId = document.getElementById('asignacionColaborador').value;
     const equipoId = document.getElementById('asignacionEquipo').value;
     
-    const asignacion = {
-        _id: 'ASG' + Date.now(),
-        colaboradorId: colaboradorId,
-        equipoId: equipoId,
-        fechaAsignacion: document.getElementById('asignacionFecha').value,
-        fechaDevolucion: null,
-        estado: document.getElementById('asignacionEstado').value,
-        observaciones: document.getElementById('asignacionObservaciones').value,
-        createdAt: new Date().toISOString()
-    };
-    
-    database.asignaciones.push(asignacion);
-    
-    const equipo = database.equipos.find(e => e._id === equipoId);
-    equipo.estado = 'Asignado';
+    if (asignacionId) {
+        // EDITAR asignación existente
+        const asignacion = database.asignaciones.find(a => a._id === asignacionId);
+        if (!asignacion) {
+            showNotification('❌ Error: Asignación no encontrada', 'error');
+            return;
+        }
+        
+        const equipoAnterior = asignacion.equipoId;
+        
+        // Actualizar datos
+        asignacion.colaboradorId = colaboradorId;
+        asignacion.equipoId = equipoId;
+        asignacion.fechaAsignacion = document.getElementById('asignacionFecha').value;
+        asignacion.estado = document.getElementById('asignacionEstado').value;
+        asignacion.observaciones = document.getElementById('asignacionObservaciones').value;
+        
+        // Si cambió el equipo, actualizar estados
+        if (equipoAnterior !== equipoId) {
+            // Liberar equipo anterior
+            const eqAnterior = database.equipos.find(e => e._id === equipoAnterior);
+            if (eqAnterior) {
+                eqAnterior.estado = 'Disponible';
+            }
+            
+            // Asignar nuevo equipo
+            const eqNuevo = database.equipos.find(e => e._id === equipoId);
+            if (eqNuevo) {
+                eqNuevo.estado = 'Asignado';
+            }
+        }
+        
+        // Si cambió a Devuelto, liberar equipo
+        if (asignacion.estado === 'Devuelto' && !asignacion.fechaDevolucion) {
+            asignacion.fechaDevolucion = new Date().toISOString().split('T')[0];
+            const equipo = database.equipos.find(e => e._id === equipoId);
+            if (equipo) {
+                equipo.estado = 'Disponible';
+            }
+        }
+        
+        showNotification('✅ Asignación actualizada correctamente');
+    } else {
+        // CREAR nueva asignación
+        const asignacion = {
+            _id: 'ASG' + Date.now(),
+            colaboradorId: colaboradorId,
+            equipoId: equipoId,
+            fechaAsignacion: document.getElementById('asignacionFecha').value,
+            fechaDevolucion: null,
+            estado: document.getElementById('asignacionEstado').value,
+            observaciones: document.getElementById('asignacionObservaciones').value,
+            createdAt: new Date().toISOString()
+        };
+        
+        database.asignaciones.push(asignacion);
+        
+        const equipo = database.equipos.find(e => e._id === equipoId);
+        if (equipo) {
+            equipo.estado = 'Asignado';
+        }
+        
+        showNotification('✅ Equipo asignado correctamente');
+    }
     
     saveData();
     renderAsignaciones();
-    renderEquipos();
-    updateDashboard();
+    if (typeof renderEquipos === 'function') renderEquipos();
+    if (typeof updateDashboard === 'function') updateDashboard();
     closeModal('modalAsignacion');
-    showNotification('✅ Equipo asignado correctamente');
 }
 
 function renderAsignaciones() {
     const tbody = document.getElementById('asignacionesTableBody');
+    
+    if (!tbody) {
+        console.error('Tabla de asignaciones no encontrada');
+        return;
+    }
     
     if (database.asignaciones.length === 0) {
         tbody.innerHTML = `
@@ -78,11 +198,12 @@ function renderAsignaciones() {
                 <td>${estadoBadge}</td>
                 <td>${asig.observaciones || '-'}</td>
                 <td class="action-buttons">
+                    <button class="btn btn-sm btn-primary" onclick='editAsignacion("${asig._id}")' title="Editar asignación">✏️ Editar</button>
                     ${asig.estado === 'Activa' ? 
-                        `<button class="btn btn-sm btn-warning" onclick='devolverEquipo("${asig._id}")'>↩️ Devolver</button>` : 
+                        `<button class="btn btn-sm btn-warning" onclick='devolverEquipo("${asig._id}")' title="Devolver equipo">↩️ Devolver</button>` : 
                         ''
                     }
-                    <button class="btn btn-sm btn-danger" onclick='deleteAsignacion("${asig._id}")'>🗑️</button>
+                    <button class="btn btn-sm btn-danger" onclick='deleteAsignacion("${asig._id}")' title="Eliminar asignación">🗑️</button>
                 </td>
             </tr>
         `;
@@ -93,19 +214,99 @@ function renderAsignaciones() {
     }
 }
 
+function editAsignacion(id) {
+    const asignacion = database.asignaciones.find(a => a._id === id);
+    if (!asignacion) {
+        showNotification('❌ Asignación no encontrada', 'error');
+        return;
+    }
+    
+    // Verificar que los elementos del formulario existan
+    const selectColaborador = document.getElementById('asignacionColaborador');
+    const selectEquipo = document.getElementById('asignacionEquipo');
+    const inputFecha = document.getElementById('asignacionFecha');
+    const selectEstado = document.getElementById('asignacionEstado');
+    const textareaObs = document.getElementById('asignacionObservaciones');
+    
+    if (!selectColaborador || !selectEquipo || !inputFecha || !selectEstado) {
+        showNotification('❌ Error: Elementos del formulario no encontrados', 'error');
+        console.error('Elementos faltantes en el formulario de asignación');
+        return;
+    }
+    
+    // Actualizar select de colaboradores
+    selectColaborador.innerHTML = '<option value="">Seleccionar colaborador...</option>' +
+        database.colaboradores.map(col => 
+            `<option value="${col._id}">${col.nombre} - ${col.departamento}</option>`
+        ).join('');
+    
+    // Para el select de equipos, incluir el equipo actual aunque esté asignado
+    const equiposDisponibles = database.equipos.filter(eq => 
+        eq.estado === 'Disponible' || eq._id === asignacion.equipoId
+    );
+    
+    selectEquipo.innerHTML = '<option value="">Seleccionar equipo...</option>' +
+        equiposDisponibles.map(eq => {
+            const etiqueta = eq._id === asignacion.equipoId ? 
+                `${eq.marca} ${eq.modelo} (${eq.tipo}) - ${eq.numSerie} [ACTUAL]` :
+                `${eq.marca} ${eq.modelo} (${eq.tipo}) - ${eq.numSerie}`;
+            return `<option value="${eq._id}">${etiqueta}</option>`;
+        }).join('');
+    
+    // Verificar o crear el campo oculto para el ID
+    let asignacionIdInput = document.getElementById('asignacionId');
+    if (!asignacionIdInput) {
+        asignacionIdInput = document.createElement('input');
+        asignacionIdInput.type = 'hidden';
+        asignacionIdInput.id = 'asignacionId';
+        document.getElementById('formAsignacion').prepend(asignacionIdInput);
+    }
+    
+    // Llenar el formulario con los datos
+    asignacionIdInput.value = asignacion._id;
+    selectColaborador.value = asignacion.colaboradorId;
+    selectEquipo.value = asignacion.equipoId;
+    inputFecha.value = asignacion.fechaAsignacion;
+    selectEstado.value = asignacion.estado;
+    if (textareaObs) {
+        textareaObs.value = asignacion.observaciones || '';
+    }
+    
+    // Cambiar título del modal si existe
+    const modalTitle = document.getElementById('modalAsignacionTitle');
+    if (modalTitle) {
+        modalTitle.textContent = 'Editar Asignación';
+    }
+    
+    // Cambiar texto del botón de guardar si existe
+    const btnSubmit = document.querySelector('#modalAsignacion .btn-success');
+    if (btnSubmit) {
+        btnSubmit.innerHTML = '💾 Actualizar Asignación';
+    }
+    
+    openModal('modalAsignacion');
+}
+
 function devolverEquipo(asignacionId) {
     if (confirm('¿Confirmar devolución del equipo?')) {
         const asignacion = database.asignaciones.find(a => a._id === asignacionId);
+        if (!asignacion) {
+            showNotification('❌ Asignación no encontrada', 'error');
+            return;
+        }
+        
         asignacion.estado = 'Devuelto';
         asignacion.fechaDevolucion = new Date().toISOString().split('T')[0];
         
         const equipo = database.equipos.find(e => e._id === asignacion.equipoId);
-        equipo.estado = 'Disponible';
+        if (equipo) {
+            equipo.estado = 'Disponible';
+        }
         
         saveData();
         renderAsignaciones();
-        renderEquipos();
-        updateDashboard();
+        if (typeof renderEquipos === 'function') renderEquipos();
+        if (typeof updateDashboard === 'function') updateDashboard();
         showNotification('✅ Equipo devuelto correctamente');
     }
 }
@@ -114,21 +315,23 @@ function deleteAsignacion(id) {
     if (confirm('¿Estás seguro de eliminar esta asignación?')) {
         const asignacion = database.asignaciones.find(a => a._id === id);
         
-        if (asignacion.estado === 'Activa') {
+        if (asignacion && asignacion.estado === 'Activa') {
             const equipo = database.equipos.find(e => e._id === asignacion.equipoId);
-            equipo.estado = 'Disponible';
+            if (equipo) {
+                equipo.estado = 'Disponible';
+            }
         }
         
         database.asignaciones = database.asignaciones.filter(a => a._id !== id);
         saveData();
         renderAsignaciones();
-        renderEquipos();
-        updateDashboard();
+        if (typeof renderEquipos === 'function') renderEquipos();
+        if (typeof updateDashboard === 'function') updateDashboard();
         showNotification('✅ Asignación eliminada');
     }
 }
 
-// LICENCIAS
+// LICENCIAS (código sin cambios)
 function saveLicencia(event) {
     event.preventDefault();
     
@@ -163,6 +366,11 @@ function saveLicencia(event) {
 function renderLicencias() {
     const tbody = document.getElementById('licenciasTableBody');
     
+    if (!tbody) {
+        console.error('Tabla de licencias no encontrada');
+        return;
+    }
+    
     if (database.licencias.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -177,9 +385,8 @@ function renderLicencias() {
     }
     
     tbody.innerHTML = database.licencias.map(lic => {
-        const cantidadAsignada = database.licenciasAsignaciones.filter(la => 
-            la.licenciaId === lic._id
-        ).length;
+        const cantidadAsignada = database.licenciasAsignaciones ? 
+            database.licenciasAsignaciones.filter(la => la.licenciaId === lic._id).length : 0;
         
         const estadoBadge = lic.estado === 'Activa' ? 'badge-success' : 
                           lic.estado === 'Vencida' ? 'badge-danger' : 'badge-info';
@@ -188,7 +395,6 @@ function renderLicencias() {
             <tr>
                 <td><strong>${lic.software}</strong></td>
                 <td>${lic.tipo}</td>
-                <td style="font-family: monospace; font-size: 0.9em;">${lic.clave || '-'}</td>
                 <td><span class="badge badge-info">${cantidadAsignada} usuario(s)</span></td>
                 <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
                 <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
@@ -203,18 +409,9 @@ function renderLicencias() {
     }).join('');
 }
 
-function filterLicencias() {
-    const searchTerm = document.getElementById('searchLicencia').value.toLowerCase();
-    const rows = document.querySelectorAll('#licenciasTableBody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
-    });
-}
-
 function editLicencia(id) {
     const licencia = database.licencias.find(l => l._id === id);
+    if (!licencia) return;
     
     document.getElementById('licenciaId').value = licencia._id;
     document.getElementById('licenciaSoftware').value = licencia.software;
@@ -230,13 +427,13 @@ function editLicencia(id) {
 }
 
 function deleteLicencia(id) {
-    const asignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId === id);
+    const asignaciones = database.licenciasAsignaciones ? 
+        database.licenciasAsignaciones.filter(la => la.licenciaId === id) : [];
     
     if (asignaciones.length > 0) {
         if (!confirm(`Esta licencia está asignada a ${asignaciones.length} usuario(s). ¿Deseas eliminarla de todas formas? Se eliminarán todas las asignaciones.`)) {
             return;
         }
-        // Eliminar todas las asignaciones
         database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== id);
     }
     
@@ -244,7 +441,9 @@ function deleteLicencia(id) {
         database.licencias = database.licencias.filter(l => l._id !== id);
         saveData();
         renderLicencias();
-        renderColaboradores();
+        if (typeof renderColaboradores === 'function') {
+            renderColaboradores();
+        }
         showNotification('✅ Licencia eliminada');
     }
 }
@@ -256,9 +455,10 @@ function abrirAsignarUsuarios(licenciaId) {
     document.getElementById('licenciaAsignarId').value = licenciaId;
     document.getElementById('licenciaAsignarNombre').textContent = licencia.software;
     
-    const asignacionesActuales = database.licenciasAsignaciones
-        .filter(la => la.licenciaId === licenciaId)
-        .map(la => la.colaboradorId);
+    const asignacionesActuales = database.licenciasAsignaciones ?
+        database.licenciasAsignaciones
+            .filter(la => la.licenciaId === licenciaId)
+            .map(la => la.colaboradorId) : [];
     
     const listaHTML = database.colaboradores.map(col => {
         const isAsignado = asignacionesActuales.includes(col._id);
@@ -309,12 +509,14 @@ function guardarAsignacionesLicencia() {
     const licenciaId = document.getElementById('licenciaAsignarId').value;
     const checkboxes = document.querySelectorAll('#listaUsuariosAsignar input[type="checkbox"]');
     
-    // Eliminar asignaciones antiguas de esta licencia
+    if (!database.licenciasAsignaciones) {
+        database.licenciasAsignaciones = [];
+    }
+    
     database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => 
         la.licenciaId !== licenciaId
     );
     
-    // Agregar nuevas asignaciones
     checkboxes.forEach((checkbox, index) => {
         if (checkbox.checked) {
             const item = checkbox.closest('.usuario-asignar-item');
@@ -331,7 +533,9 @@ function guardarAsignacionesLicencia() {
     
     saveData();
     renderLicencias();
-    renderColaboradores();
+    if (typeof renderColaboradores === 'function') {
+        renderColaboradores();
+    }
     closeModal('modalAsignarUsuarios');
     showNotification('✅ Asignaciones guardadas correctamente');
 }
@@ -339,7 +543,6 @@ function guardarAsignacionesLicencia() {
 function seleccionarTodosUsuarios() {
     const items = document.querySelectorAll('.usuario-asignar-item');
     items.forEach(item => {
-        // Solo seleccionar items visibles (no filtrados)
         if (item.style.display !== 'none') {
             const checkbox = item.querySelector('input[type="checkbox"]');
             checkbox.checked = true;
@@ -365,7 +568,8 @@ function verDetalleLicencia(id) {
     const licencia = database.licencias.find(l => l._id === id);
     if (!licencia) return;
     
-    const asignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId === id);
+    const asignaciones = database.licenciasAsignaciones ? 
+        database.licenciasAsignaciones.filter(la => la.licenciaId === id) : [];
     
     const usuariosHTML = asignaciones.length > 0 ? asignaciones.map(asig => {
         const colaborador = database.colaboradores.find(c => c._id === asig.colaboradorId);
@@ -436,4 +640,3 @@ function verDetalleLicencia(id) {
     document.getElementById('detalleLicenciaContent').innerHTML = content;
     openModal('modalDetalleLicencia');
 }
-
