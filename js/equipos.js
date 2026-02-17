@@ -120,8 +120,6 @@ function renderEquipos() {
         
         return `
             <tr>
-                <td>${fotoHTML}</td>
-                <td>${eq.marca}</td>
                 <td>${eq.modelo}</td>
                 <td>${eq.tipo}</td>
                 <td>${categoriaBadges[categoria]}</td>
