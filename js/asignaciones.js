@@ -174,7 +174,7 @@ function renderAsignaciones() {
                 <td colspan="7" class="empty-state">
                     <div class="empty-state-icon">🔗</div>
                     <h3>No hay asignaciones registradas</h3>
-                    <p>Haz clic en "Nueva Asignación" para comenzar</p>
+                    <p>Haz clic en "Nueva Asignación de equipo de computo" para comenzar</p>
                 </td>
             </tr>
         `;

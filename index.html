@@ -855,6 +855,43 @@
         </div>
     </div>
     
+    <!-- MODAL ASIGNACIÓN CELULAR -->
+    <div id="modalAsignacionCelular" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📱 Asignar Celular</h3>
+                <button class="close-modal" onclick="closeModal('modalAsignacionCelular')">&times;</button>
+            </div>
+            <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 0.85em; opacity: 0.9;">Celular</p>
+                <p style="margin: 4px 0 0 0; font-weight: 700; font-size: 1.05em;" id="asignacionCelularNombre"></p>
+            </div>
+            <form id="formAsignacionCelular" onsubmit="saveAsignacionCelular(event)">
+                <input type="hidden" id="asignacionCelularId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Colaborador *</label>
+                        <select id="asignacionCelularColaborador" required>
+                            <option value="">Seleccionar colaborador...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Asignación *</label>
+                        <input type="date" id="asignacionCelularFecha" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observaciones</label>
+                    <textarea id="asignacionCelularObservaciones" placeholder="Accesorios entregados, condición, etc."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">💾 Asignar Celular</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalAsignacionCelular')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL ASIGNACIÓN -->
     <div id="modalAsignacion" class="modal">
         <div class="modal-content">

@@ -168,6 +168,12 @@ function renderCelulares() {
                 <td>${colaborador ? colaborador.nombre : '-'}</td>
                 <td>
                     <div class="action-buttons">
+                        ${cel.estado === 'Disponible' ?
+                            `<button class="btn btn-sm btn-success" onclick="abrirAsignarCelular('${cel._id}')">👤 Asignar</button>` :
+                            cel.estado === 'Asignado' ?
+                            `<button class="btn btn-sm btn-warning" onclick="devolverCelular('${cel._id}')">↩️ Devolver</button>` :
+                            ''
+                        }
                         <button class="btn btn-sm btn-info" onclick="verDetalleCelular('${cel._id}')">👁️ Ver</button>
                         <button class="btn btn-sm btn-primary" onclick="editCelular('${cel._id}')">✏️</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteCelular('${cel._id}')">🗑️</button>
@@ -468,5 +474,103 @@ function filterCelulares() {
         
         row.style.display = (matchSearch && matchEstado && matchCompania && matchPropiedad) ? '' : 'none';
     });
+}
+
+// ================================
+// ASIGNACIÓN DE CELULARES
+// ================================
+
+function abrirAsignarCelular(celularId) {
+    const celular = database.celulares.find(c => c._id === celularId);
+    if (!celular) return;
+
+    document.getElementById('asignacionCelularId').value = celularId;
+    document.getElementById('asignacionCelularNombre').textContent = `${celular.marca} ${celular.modelo} (${celular.numero})`;
+
+    // Cargar colaboradores en el select
+    const select = document.getElementById('asignacionCelularColaborador');
+    select.innerHTML = '<option value="">Seleccionar colaborador...</option>' +
+        database.colaboradores.map(col =>
+            `<option value="${col._id}">${col.nombre} - ${col.departamento}</option>`
+        ).join('');
+
+    // Fecha de hoy
+    document.getElementById('asignacionCelularFecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('asignacionCelularObservaciones').value = '';
+
+    openModal('modalAsignacionCelular');
+}
+
+function saveAsignacionCelular(event) {
+    event.preventDefault();
+
+    const celularId = document.getElementById('asignacionCelularId').value;
+    const colaboradorId = document.getElementById('asignacionCelularColaborador').value;
+    const fecha = document.getElementById('asignacionCelularFecha').value;
+    const observaciones = document.getElementById('asignacionCelularObservaciones').value;
+
+    if (!colaboradorId) {
+        showNotification('❌ Debes seleccionar un colaborador', 'error');
+        return;
+    }
+
+    // Verificar si ya tiene una asignación activa
+    const asignacionActiva = database.asignacionesCelulares.find(a =>
+        a.celularId === celularId && a.estado === 'Activa'
+    );
+    if (asignacionActiva) {
+        showNotification('❌ Este celular ya está asignado. Primero devuélvelo.', 'error');
+        return;
+    }
+
+    const asignacion = {
+        _id: 'ASGCEL' + Date.now(),
+        celularId: celularId,
+        colaboradorId: colaboradorId,
+        fechaAsignacion: fecha,
+        fechaDevolucion: null,
+        estado: 'Activa',
+        observaciones: observaciones,
+        createdAt: new Date().toISOString()
+    };
+
+    database.asignacionesCelulares.push(asignacion);
+
+    // Actualizar estado del celular
+    const celular = database.celulares.find(c => c._id === celularId);
+    if (celular) {
+        celular.estado = 'Asignado';
+    }
+
+    saveData();
+    renderCelulares();
+    if (typeof updateDashboard === 'function') updateDashboard();
+    closeModal('modalAsignacionCelular');
+    showNotification('✅ Celular asignado correctamente');
+}
+
+function devolverCelular(celularId) {
+    if (!confirm('¿Confirmar devolución del celular?')) return;
+
+    const asignacion = database.asignacionesCelulares.find(a =>
+        a.celularId === celularId && a.estado === 'Activa'
+    );
+    if (!asignacion) {
+        showNotification('❌ No se encontró asignación activa', 'error');
+        return;
+    }
+
+    asignacion.estado = 'Devuelto';
+    asignacion.fechaDevolucion = new Date().toISOString().split('T')[0];
+
+    const celular = database.celulares.find(c => c._id === celularId);
+    if (celular) {
+        celular.estado = 'Disponible';
+    }
+
+    saveData();
+    renderCelulares();
+    if (typeof updateDashboard === 'function') updateDashboard();
+    showNotification('✅ Celular devuelto correctamente');
 }
 
