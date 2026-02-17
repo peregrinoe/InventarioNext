@@ -149,6 +149,7 @@
                                 <th data-sort="email" onclick="ordenarColaboradores('email')" style="cursor: pointer;">Email</th>
                                 <th data-sort="departamento" onclick="ordenarColaboradores('departamento')" style="cursor: pointer;">Departamento</th>
                                 <th data-sort="puesto" onclick="ordenarColaboradores('puesto')" style="cursor: pointer;">Puesto</th>
+                                <th>Contrato</th>
                                 <th>Equipos</th>
                                 <th>Licencias</th>
                                 <th>Acciones</th>
@@ -156,7 +157,7 @@
                         </thead>
                         <tbody id="colaboradoresTableBody">
                             <tr>
-                                <td colspan="8" class="empty-state">
+                                <td colspan="9" class="empty-state">
                                     <div class="empty-state-icon">👥</div>
                                     <h3>No hay colaboradores registrados</h3>
                                     <p>Haz clic en "Nuevo Colaborador" para comenzar</p>
@@ -219,13 +220,15 @@
                                 <th>N° Serie</th>
                                 <th>Nombre equipo</th>
                                 <th>Estado</th>
+                                <th>Condición</th>
                                 <th>Asignado a</th>
+                                <th>Comentarios</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="equiposTableBody">
                             <tr>
-                                <td colspan="11" class="empty-state">
+                                <td colspan="13" class="empty-state">
                                     <div class="empty-state-icon">💻</div>
                                     <h3>No hay equipos registrados</h3>
                                     <p>Haz clic en "Nuevo Equipo" para comenzar</p>
@@ -590,11 +593,7 @@
                         <select id="equipoTipo" required>
                             <option value="">Seleccionar...</option>
                             <option value="Laptop">Laptop</option>
-                            <option value="Desktop">Desktop</option>
                             <option value="Monitor">Monitor</option>
-                            <option value="Tablet">Tablet</option>
-                            <option value="Impresora">Impresora</option>
-                            <option value="Escáner">Escáner</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -688,13 +687,13 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Condidiones de equipo</label>
-                        <select id="equipoFrecuenciaMantenimiento">
+                        <label>Condiciones del Equipo</label>
+                        <select id="equipoCondicion">
                             <option value="">Seleccionar...</option>
-                            <option value="Buenas condiciones">Buenas condiciones</option>
-                            <option value="Aceptable">Aceptable</option>
-                            <option value="Malas condiciones">Malas condiciones</option>
-                            <option value="Baja definitiva">Baja definitiva</option>
+                            <option value="Buenas condiciones">✅ Buenas condiciones</option>
+                            <option value="Aceptable">🟡 Aceptable</option>
+                            <option value="Malas condiciones">🔴 Malas condiciones</option>
+                            <option value="Baja definitiva">⛔ Baja definitiva</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1026,6 +1025,56 @@
             <div id="detalleEquipoContent">
                 <!-- Se llenará dinámicamente -->
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL AGENDAR MANTENIMIENTO -->
+    <div id="modalAgendarMantenimiento" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3>🔧 Agendar Mantenimiento</h3>
+                <button class="close-modal" onclick="closeModal('modalAgendarMantenimiento')">&times;</button>
+            </div>
+            <div style="background: linear-gradient(135deg,#667eea,#764ba2); color:white; padding:12px 16px; border-radius:8px; margin-bottom:15px;">
+                <p style="margin:0; font-size:0.82em; opacity:0.85;">Equipo</p>
+                <p style="margin:4px 0 0 0; font-weight:700; font-size:1.05em;" id="citaEquipoNombre"></p>
+            </div>
+            <div id="citaEstatusEquipo"></div>
+            <form id="formCitaMantenimiento" onsubmit="guardarCitaMantenimiento(event)">
+                <input type="hidden" id="citaEquipoId">
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-group">
+                        <label>📅 Fecha de la Cita *</label>
+                        <input type="date" id="citaFecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label>🕐 Hora</label>
+                        <input type="time" id="citaHora">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>🔩 Tipo de Mantenimiento *</label>
+                    <select id="citaTipo" required>
+                        <option value="Preventivo">🛡️ Preventivo</option>
+                        <option value="Correctivo">🔨 Correctivo</option>
+                        <option value="Limpieza">🧹 Limpieza</option>
+                        <option value="Actualización">⬆️ Actualización de Software</option>
+                        <option value="Diagnóstico">🔍 Diagnóstico</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>👨‍🔧 Técnico Responsable</label>
+                    <input type="text" id="citaTecnico" placeholder="Nombre del técnico o empresa...">
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label>📝 Notas adicionales</label>
+                    <textarea id="citaNotas" rows="3" placeholder="Descripción del servicio, piezas a reemplazar, etc..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">📅 Confirmar Cita</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalAgendarMantenimiento')">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 
