@@ -556,3 +556,22 @@ input[type="file"] {
         flex-direction: column;
     }
 }
+
+th[data-sort] {
+    user-select: none;
+    position: relative;
+}
+
+th[data-sort]:hover {
+    background: #e2e8f0 !important;
+}
+
+.sort-icon {
+    color: #667eea;
+    font-weight: bold;
+}
+
+/* Estilos para checkboxes */
+input[type="checkbox"] {
+    accent-color: #667eea;
+}
