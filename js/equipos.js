@@ -397,14 +397,71 @@ function guardarCitaMantenimiento(event) {
 }
 
 function marcarCitaCompletada(citaId, equipoId) {
-    if (!confirm('¿Confirmar que el mantenimiento fue realizado? Se actualizará la fecha del último mantenimiento.')) return;
     if (!database.citasMantenimiento) database.citasMantenimiento = [];
-    const cita = database.citasMantenimiento.find(c => c._id === citaId);
-    if (cita) { cita.estado = 'Completada'; cita.completadaAt = new Date().toISOString(); }
+    const cita   = database.citasMantenimiento.find(c => c._id === citaId);
     const equipo = database.equipos.find(e => e._id === equipoId);
-    if (equipo && cita) equipo.ultimoMantenimiento = cita.fecha;
+    if (!cita || !equipo) return;
+
+    // Llenar el modal con datos actuales del equipo
+    document.getElementById('completarCitaId').value      = citaId;
+    document.getElementById('completarEquipoId').value    = equipoId;
+    document.getElementById('completarEquipoNombre').textContent = `${equipo.marca} ${equipo.modelo} · ${equipo.numSerie}`;
+    document.getElementById('completarCitaInfo').textContent =
+        `Cita: ${new Date(cita.fecha).toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}` +
+        (cita.hora ? ` a las ${cita.hora}` : '') +
+        (cita.tipo ? ` · ${cita.tipo}` : '') +
+        (cita.tecnico ? ` · 👨‍🔧 ${cita.tecnico}` : '');
+
+    // Pre-llenar con valores actuales del equipo
+    document.getElementById('completarFechaReal').value        = cita.fecha;
+    document.getElementById('completarEstadoEquipo').value     = equipo.estado || 'Disponible';
+    document.getElementById('completarCondicionEquipo').value  = equipo.condicion || '';
+    document.getElementById('completarObservaciones').value    = '';
+
+    closeModal('modalDetalleEquipo'); // cerrar detalle para que no tape
+    openModal('modalCompletarMantenimiento');
+}
+
+function confirmarMantenimientoCompletado(event) {
+    event.preventDefault();
+    if (!database.citasMantenimiento) database.citasMantenimiento = [];
+
+    const citaId          = document.getElementById('completarCitaId').value;
+    const equipoId        = document.getElementById('completarEquipoId').value;
+    const fechaReal       = document.getElementById('completarFechaReal').value;
+    const nuevoEstado     = document.getElementById('completarEstadoEquipo').value;
+    const nuevaCondicion  = document.getElementById('completarCondicionEquipo').value;
+    const observaciones   = document.getElementById('completarObservaciones').value;
+
+    // Actualizar la cita
+    const cita = database.citasMantenimiento.find(c => c._id === citaId);
+    if (cita) {
+        cita.estado       = 'Completada';
+        cita.completadaAt = new Date().toISOString();
+        cita.fechaReal    = fechaReal;
+        if (observaciones) cita.notasCompletado = observaciones;
+    }
+
+    // Actualizar el equipo
+    const equipo = database.equipos.find(e => e._id === equipoId);
+    if (equipo) {
+        equipo.ultimoMantenimiento = fechaReal;
+        equipo.estado              = nuevoEstado;
+        equipo.condicion           = nuevaCondicion;
+        // Agregar observaciones al historial existente
+        if (observaciones) {
+            const fecha = new Date().toLocaleDateString('es-MX');
+            const prefijo = `[Mtto. ${fecha}] `;
+            equipo.observaciones = equipo.observaciones
+                ? `${prefijo}${observaciones}\n—\n${equipo.observaciones}`
+                : `${prefijo}${observaciones}`;
+        }
+    }
+
     saveData();
-    showNotification('✅ Mantenimiento marcado como completado');
+    renderEquipos();
+    closeModal('modalCompletarMantenimiento');
+    showNotification('✅ Mantenimiento completado. Estado y condición actualizados.');
     verDetalleEquipo(equipoId);
 }
 

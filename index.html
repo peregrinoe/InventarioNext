@@ -1078,6 +1078,71 @@
         </div>
     </div>
 
+    <!-- MODAL COMPLETAR MANTENIMIENTO -->
+    <div id="modalCompletarMantenimiento" class="modal">
+        <div class="modal-content" style="max-width: 540px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border-radius: 8px 8px 0 0;">
+                <h3 style="color: white; display: flex; align-items: center; gap: 10px;">
+                    ✅ Completar Mantenimiento
+                </h3>
+                <button class="close-modal" style="color: white;" onclick="closeModal('modalCompletarMantenimiento')">&times;</button>
+            </div>
+
+            <!-- Info equipo -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                <p style="margin:0; font-size:0.82em; color:#064e3b; font-weight:600;">Equipo</p>
+                <p style="margin:4px 0 0 0; font-weight:700; color:#065f46; font-size:1.05em;" id="completarEquipoNombre"></p>
+                <p style="margin:4px 0 0 0; color:#047857; font-size:0.85em;" id="completarCitaInfo"></p>
+            </div>
+
+            <form id="formCompletarMantenimiento" onsubmit="confirmarMantenimientoCompletado(event)">
+                <input type="hidden" id="completarCitaId">
+                <input type="hidden" id="completarEquipoId">
+
+                <!-- Fecha real de realización -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>📅 Fecha en que se realizó *</label>
+                    <input type="date" id="completarFechaReal" required>
+                </div>
+
+                <!-- Nuevo estado del equipo -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>🖥️ Estado del Equipo después del mantenimiento *</label>
+                    <select id="completarEstadoEquipo" required>
+                        <option value="Disponible">✅ Disponible</option>
+                        <option value="Asignado">🔵 Asignado</option>
+                        <option value="En Reparación">🔧 En Reparación</option>
+                        <option value="Dado de Baja">⛔ Dado de Baja</option>
+                    </select>
+                </div>
+
+                <!-- Nueva condición del equipo -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>🔍 Condición del Equipo después del mantenimiento *</label>
+                    <select id="completarCondicionEquipo" required>
+                        <option value="">Seleccionar condición...</option>
+                        <option value="Buenas condiciones">✅ Buenas condiciones</option>
+                        <option value="Aceptable">🟡 Aceptable</option>
+                        <option value="Malas condiciones">🔴 Malas condiciones</option>
+                        <option value="Baja definitiva">⛔ Baja definitiva</option>
+                    </select>
+                </div>
+
+                <!-- Observaciones del mantenimiento -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>📝 Observaciones del Mantenimiento</label>
+                    <textarea id="completarObservaciones" rows="3"
+                        placeholder="Trabajos realizados, piezas reemplazadas, recomendaciones..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">✅ Confirmar Mantenimiento</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalCompletarMantenimiento')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL DETALLE CELULAR -->
     <div id="modalDetalleCelular" class="modal">
         <div class="modal-content modal-detail">
