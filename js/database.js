@@ -624,9 +624,4 @@ window.onclick = function(event) {
 // ================================
 // INICIO
 // ================================
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadData);
-} else {
-    loadData();
-}
+// loadData() es llamado por auth.js después del login exitoso

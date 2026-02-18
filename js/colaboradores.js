@@ -1,3 +1,17 @@
+// ── Helper: evita el desfase de zona horaria al parsear fechas YYYY-MM-DD ──
+function parseFechaLocal(fechaStr) {
+    if (!fechaStr) return null;
+    // Agrega T00:00:00 para forzar interpretación local en lugar de UTC
+    const d = new Date(fechaStr.includes('T') ? fechaStr : fechaStr + 'T00:00:00');
+    return isNaN(d) ? null : d;
+}
+
+function formatFechaLocal(fechaStr, opciones) {
+    const d = parseFechaLocal(fechaStr);
+    if (!d) return '';
+    return d.toLocaleDateString('es-MX', opciones || {});
+}
+
 // ================================
 // FUNCIONES PARA COLABORADORES
 // ================================
@@ -294,7 +308,7 @@ function descargarCartaResponsiva(colaboradorId) {
                     <td style="border: 1px solid #ddd; padding: 8px;">${equipo.tipo}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${equipo.marca} ${equipo.modelo}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${equipo.numSerie}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${new Date(asig.fechaAsignacion).toLocaleDateString()}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${formatFechaLocal(asig.fechaAsignacion)}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${equipo.procesador || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${equipo.ram ? equipo.ram + ' GB' : 'N/A'}</td>
                 </tr>
@@ -593,64 +607,7 @@ function verDetalleColaborador(id) {
     const licenciasAsignacionesCol = database.licenciasAsignaciones.filter(la => 
         la.colaboradorId === id
     );
-
-    // --- CELULARES ---
-    const asignacionesCelularesActivas = (database.asignacionesCelulares || []).filter(a =>
-        a.colaboradorId === id && a.estado === 'Activa'
-    );
-
-    const historialAsignacionesCelulares = (database.asignacionesCelulares || [])
-        .filter(a => a.colaboradorId === id)
-        .sort((a, b) => new Date(b.fechaAsignacion) - new Date(a.fechaAsignacion));
-
-    const celularesHTML = asignacionesCelularesActivas.map(asig => {
-        const celular = (database.celulares || []).find(c => c._id === asig.celularId);
-        if (!celular) return '';
-
-        const fotos = celular.fotos || [];
-        const fotoCelular = fotos.length > 0 ?
-            `<img src="${fotos[0]}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover;">` :
-            `<div style="width: 80px; height: 80px; border-radius: 8px; background: #fce7f3; display: flex; align-items: center; justify-content: center; font-size: 2em;">📱</div>`;
-
-        return `
-            <div style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 15px; background: #f8fafc;">
-                <div style="display: flex; gap: 15px; align-items: start;">
-                    ${fotoCelular}
-                    <div style="flex: 1;">
-                        <h4 style="margin: 0 0 8px 0; color: #1e293b;">${celular.marca} ${celular.modelo}</h4>
-                        <p style="margin: 4px 0; color: #64748b;"><strong>Número:</strong> ${celular.numero}</p>
-                        <p style="margin: 4px 0; color: #64748b;"><strong>Compañía:</strong> ${celular.compania}</p>
-                        <p style="margin: 4px 0; color: #64748b;"><strong>IMEI:</strong> <span style="font-family: monospace;">${celular.imei}</span></p>
-                        <p style="margin: 4px 0; color: #64748b;"><strong>Asignado:</strong> ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
-                        ${celular.plan ? `<p style="margin: 4px 0; color: #64748b;"><strong>Plan:</strong> ${celular.plan}</p>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    const historialCelularesHTML = historialAsignacionesCelulares.length > 0 ? historialAsignacionesCelulares.map(asig => {
-        const celular = (database.celulares || []).find(c => c._id === asig.celularId);
-        if (!celular) return '';
-
-        const estadoBadgeAsig = asig.estado === 'Activa' ? 'badge-success' : 'badge-warning';
-
-        return `
-            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: white; margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                    <h4 style="margin: 0; color: #1e293b;">📱 ${celular.marca} ${celular.modelo}</h4>
-                    <span class="badge ${estadoBadgeAsig}">${asig.estado}</span>
-                </div>
-                <h5 style="margin: 0 0 4px 0; color: #64748b;">Número: ${celular.numero} &nbsp;|&nbsp; Compañía: ${celular.compania}</h5>
-                <p style="margin: 4px 0; color: #64748b; font-size: 0.9em; font-family: monospace;">IMEI: ${celular.imei}</p>
-                <p style="margin: 4px 0; color: #64748b; font-size: 0.9em;">
-                    <strong>Asignado:</strong> ${new Date(asig.fechaAsignacion).toLocaleDateString()}
-                    ${asig.fechaDevolucion ? ` | <strong>Devuelto:</strong> ${new Date(asig.fechaDevolucion).toLocaleDateString()}` : ''}
-                </p>
-            </div>
-        `;
-    }).join('') : '<p style="color: #94a3b8; text-align: center; padding: 20px;">Sin historial de asignaciones de celulares</p>';
-
+    
     const equiposHTML = asignacionesActivas.map(asig => {
         const equipo = database.equipos.find(e => e._id === asig.equipoId);
         if (!equipo) return '';
@@ -668,7 +625,7 @@ function verDetalleColaborador(id) {
                         <h4 style="margin: 0 0 8px 0; color: #1e293b;">${equipo.marca} ${equipo.modelo}</h4>
                         <p style="margin: 4px 0; color: #64748b;"><strong>Tipo:</strong> ${equipo.tipo}</p>
                         <p style="margin: 4px 0; color: #64748b;"><strong>Serie:</strong> ${equipo.numSerie}</p>
-                        <p style="margin: 4px 0; color: #64748b;"><strong>Asignado:</strong> ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
+                        <p style="margin: 4px 0; color: #64748b;"><strong>Asignado:</strong> ${formatFechaLocal(asig.fechaAsignacion)}</p>
                         ${equipo.procesador ? `<p style="margin: 4px 0; color: #64748b;"><strong>Procesador:</strong> ${equipo.procesador}</p>` : ''}
                         ${equipo.ram ? `<p style="margin: 4px 0; color: #64748b;"><strong>RAM:</strong> ${equipo.ram} GB</p>` : ''}
                     </div>
@@ -691,8 +648,8 @@ function verDetalleColaborador(id) {
                 </div>
                 <h5 style="margin: 0; color: #64748b;">Número de serie: ${equipo.numSerie}</h5>
                 <p style="margin: 4px 0; color: #64748b; font-size: 0.9em;">
-                    <strong>Asignado:</strong> ${new Date(asig.fechaAsignacion).toLocaleDateString()}
-                    ${asig.fechaDevolucion ? ` | <strong>Devuelto:</strong> ${new Date(asig.fechaDevolucion).toLocaleDateString()}` : ''}
+                    <strong>Asignado:</strong> ${formatFechaLocal(asig.fechaAsignacion)}
+                    ${asig.fechaDevolucion ? ` | <strong>Devuelto:</strong> ${formatFechaLocal(asig.fechaDevolucion)}` : ''}
                 </p>
             </div>
         `;
@@ -750,9 +707,8 @@ function verDetalleColaborador(id) {
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
                 <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">📊 Estadísticas</h3>
                 <p style="margin: 6px 0; color: #475569;"><strong>Equipos Asignados:</strong> ${asignacionesActivas.length}</p>
-                <p style="margin: 6px 0; color: #475569;"><strong>Celulares Asignados:</strong> ${asignacionesCelularesActivas.length}</p>
                 <p style="margin: 6px 0; color: #475569;"><strong>Licencias:</strong> ${licenciasAsignacionesCol.length}</p>
-                ${colaborador.fechaIngreso ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Ingreso:</strong> ${new Date(colaborador.fechaIngreso).toLocaleDateString()}</p>` : ''}
+                ${colaborador.fechaIngreso ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Ingreso:</strong> ${formatFechaLocal(colaborador.fechaIngreso)}</p>` : ''}
             </div>
         </div>
         
@@ -778,20 +734,6 @@ function verDetalleColaborador(id) {
             ${historialHTML}
         </div>
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">📱 Celulares Asignados Actualmente</h3>
-        </div>
-        <div style="display: grid; gap: 12px;">
-            ${celularesHTML || '<p style="color: #94a3b8; text-align: center; padding: 20px;">Sin celulares asignados actualmente</p>'}
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">📜 Historial de Asignaciones de Celulares</h3>
-        </div>
-        <div style="max-height: 300px; overflow-y: auto;">
-            ${historialCelularesHTML}
-        </div>
-
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
             <h3 style="margin: 0; color: #1e293b;">🔑 Licencias Asignadas</h3>
         </div>

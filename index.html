@@ -3,24 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Inventario - Almacenamiento Local</title>
+    <title>Sistema de Inventario</title>
     <link rel="stylesheet" href="./main.css">
+
+    <style>
+        /* ── LOGIN SCREEN ─────────────────────────────────── */
+        #loginScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+        }
+        #loginCard {
+            background: white;
+            border-radius: 20px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+            animation: loginSlideIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes loginSlideIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to   { opacity: 1; transform: translateY(0)   scale(1); }
+        }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%,60%  { transform: translateX(-8px); }
+            40%,80%  { transform: translateX(8px); }
+        }
+        #loginCard.shake { animation: shake 0.5s ease; }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-logo .login-icon {
+            font-size: 3.5em;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .login-logo h1 {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 4px 0;
+        }
+        .login-logo p {
+            color: #64748b;
+            font-size: 0.9em;
+            margin: 0;
+        }
+        .login-field {
+            margin-bottom: 18px;
+        }
+        .login-field label {
+            display: block;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .login-field input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1em;
+            color: #0f172a;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .login-field input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .login-btn:hover  { opacity: 0.92; transform: translateY(-1px); }
+        .login-btn:active { transform: translateY(0); }
+        #loginError {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.88em;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .login-divider {
+            border: none;
+            border-top: 1px solid #f1f5f9;
+            margin: 28px 0 20px 0;
+        }
+        .login-roles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .login-role-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            font-size: 0.8em;
+        }
+        .login-role-card .role-emoji { font-size: 1.6em; display: block; margin-bottom: 4px; }
+        .login-role-card strong { display: block; color: #1e293b; margin-bottom: 2px; }
+        .login-role-card span { color: #94a3b8; font-size: 0.9em; }
+
+        /* ── USER BAR ─────────────────────────────────────── */
+        #userInfoBar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 8px 20px;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 <body>
+
+    <!-- ══ PANTALLA DE LOGIN ══════════════════════════════════════ -->
+    <div id="loginScreen" style="display:none;">
+        <div id="loginCard">
+            <div class="login-logo">
+                <span class="login-icon">💻</span>
+                <h1>Sistema de Inventario</h1>
+                <p>Gestión de Equipos de Cómputo</p>
+            </div>
+
+            <div id="loginError"></div>
+
+            <form onsubmit="doLogin(event)">
+                <div class="login-field">
+                    <label>👤 Usuario</label>
+                    <input type="text" id="loginUsername" placeholder="Ingresa tu usuario" autocomplete="username" required>
+                </div>
+                <div class="login-field">
+                    <label>🔒 Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="login-btn">🚀 Ingresar</button>
+            </form>
+
+            <hr class="login-divider">
+            <div class="login-roles">
+                <div class="login-role-card">
+                    <span class="role-emoji">🛡️</span>
+                    <strong>Super Admin</strong>
+                    <span>Acceso total</span>
+                </div>
+                <div class="login-role-card">
+                    <span class="role-emoji">👁️</span>
+                    <strong>Operador</strong>
+                    <span>Solo visualización</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ BARRA DE USUARIO ═══════════════════════════════════════ -->
+    <div id="userInfoBar" style="display:none;"></div>
+
+    <!-- ══ CONTENEDOR PRINCIPAL DE LA APP ════════════════════════ -->
+    <div id="appContainer" style="display:none;">
     <div class="container">
         <header>
-            <h1>💻 Sistema de Inventario - Next Technologies</h1>
-            <p>Gestión de Equipos de Cómputo</p>
+            <h1>💻 Sistema de Inventario</h1>
+            <p>Gestión de Equipos de Cómputo - Almacenamiento Local</p>
         </header>
         
-    <!--<div class="backup-controls">
+<!--       <div class="backup-controls">
             <div class="info">
                 <strong>💾 Almacenamiento:</strong> Los datos se guardan automáticamente en tu navegador
             </div>
             <button class="btn btn-success" onclick="exportarDatos()">📥 Exportar Datos (JSON)</button>
             <button class="btn btn-info" onclick="document.getElementById('fileInput').click()">📤 Importar Datos</button>
             <input type="file" id="fileInput" accept=".json" onchange="importarDatos(event)">
-        </div> -->
+        </div>-->
         
         <nav class="main-nav">
             <button class="nav-btn active" onclick="showSection('dashboard')">
@@ -1195,9 +1377,11 @@
     <div id="notification" class="notification">
         <span id="notificationText"></span>
     </div>
+</div><!-- /appContainer -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Supabase SDK -->
     <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="./js/auth.js"></script>
     <script src="./js/database.js"></script>
 <script src="./js/images.js"></script>
 <script src="./js/colaboradores.js"></script>
@@ -1207,5 +1391,6 @@
 <script src="./js/licencias.js"></script>
 <script src="./js/dashboard.js"></script>
 <script src="./js/reportes.js"></script>
+<script>initAuth();</script>
 </body>
 </html>
