@@ -147,10 +147,12 @@ function renderColaboradores() {
                 <td><span class="badge badge-info">${equiposAsignados} equipo(s)</span></td>
                 <td><span class="badge badge-success">${licenciasAsignadas} licencia(s)</span></td>
                 <td class="action-buttons">
-                    ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
-                    <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
-                    <button class="btn btn-sm btn-primary" onclick='editColaborador("${col._id}")'>✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick='deleteColaborador("${col._id}")'>🗑️</button>
+                    <div class="action-buttons-inner">
+                        ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
+                        <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
+                        <button class="btn btn-sm btn-primary" onclick='editColaborador("${col._id}")'>✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick='deleteColaborador("${col._id}")'>🗑️</button>
+                    </div>
                 </td>
             </tr>
         `;

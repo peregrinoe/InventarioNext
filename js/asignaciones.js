@@ -198,12 +198,14 @@ function renderAsignaciones() {
                 <td>${estadoBadge}</td>
                 <td>${asig.observaciones || '-'}</td>
                 <td class="action-buttons">
+                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-primary" onclick='editAsignacion("${asig._id}")' title="Editar asignación">✏️ Editar</button>
                     ${asig.estado === 'Activa' ? 
                         `<button class="btn btn-sm btn-warning" onclick='devolverEquipo("${asig._id}")' title="Devolver equipo">↩️ Devolver</button>` : 
                         ''
                     }
                     <button class="btn btn-sm btn-danger" onclick='deleteAsignacion("${asig._id}")' title="Eliminar asignación">🗑️</button>
+                </div>
                 </td>
             </tr>
         `;
@@ -399,10 +401,12 @@ function renderLicencias() {
                 <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
                 <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
                 <td class="action-buttons">
+                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-success" onclick='abrirAsignarUsuarios("${lic._id}")'>👥 Asignar</button>
                     <button class="btn btn-sm btn-info" onclick='verDetalleLicencia("${lic._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editLicencia("${lic._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteLicencia("${lic._id}")'>🗑️</button>
+                </div>
                 </td>
             </tr>
         `;

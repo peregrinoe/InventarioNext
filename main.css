@@ -311,8 +311,13 @@ tbody tr:hover {
 }
 
 .action-buttons {
+    white-space: nowrap;
+}
+
+.action-buttons-inner {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    align-items: center;
 }
 
 .btn-sm {

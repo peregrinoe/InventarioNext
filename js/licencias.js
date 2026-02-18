@@ -63,10 +63,12 @@ function renderLicencias() {
                 <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
                 <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
                 <td class="action-buttons">
+                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-success" onclick='abrirAsignarUsuarios("${lic._id}")'>👥 Asignar</button>
                     <button class="btn btn-sm btn-info" onclick='verDetalleLicencia("${lic._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editLicencia("${lic._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteLicencia("${lic._id}")'>🗑️</button>
+                </div>
                 </td>
             </tr>
         `;

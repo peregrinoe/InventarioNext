@@ -131,9 +131,11 @@ function renderEquipos() {
                 <td>${colaborador ? colaborador.nombre : '-'}</td>
                 <td>${eq.observaciones || '-'}</td>
                 <td class="action-buttons">
+                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-info" onclick='verDetalleEquipo("${eq._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editEquipo("${eq._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteEquipo("${eq._id}")'>🗑️</button>
+                </div>
                 </td>
             </tr>
         `;
