@@ -1,5 +1,5 @@
 // LICENCIAS
-function saveLicencia(event) {
+async function saveLicencia(event) {
     event.preventDefault();
     
     const id = document.getElementById('licenciaId').value;
@@ -25,9 +25,14 @@ function saveLicencia(event) {
         showNotification('✅ Licencia creada');
     }
     
-    saveData();
-    renderLicencias();
-    closeModal('modalLicencia');
+    try {
+        await upsertLicencia(licencia);
+        renderLicencias();
+        closeModal('modalLicencia');
+    } catch(e) {
+        console.error('Error guardando licencia:', e);
+        showNotification('❌ Error al guardar. Revisa la consola.', 'error');
+    }
 }
 
 function renderLicencias() {
@@ -63,12 +68,10 @@ function renderLicencias() {
                 <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
                 <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
                 <td class="action-buttons">
-                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-success" onclick='abrirAsignarUsuarios("${lic._id}")'>👥 Asignar</button>
                     <button class="btn btn-sm btn-info" onclick='verDetalleLicencia("${lic._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editLicencia("${lic._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteLicencia("${lic._id}")'>🗑️</button>
-                </div>
                 </td>
             </tr>
         `;
@@ -101,7 +104,7 @@ function editLicencia(id) {
     openModal('modalLicencia');
 }
 
-function deleteLicencia(id) {
+async function deleteLicencia(id) {
     const asignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId === id);
     
     if (asignaciones.length > 0) {
@@ -113,11 +116,17 @@ function deleteLicencia(id) {
     }
     
     if (confirm('¿Estás seguro de eliminar esta licencia?')) {
-        database.licencias = database.licencias.filter(l => l._id !== id);
-        saveData();
-        renderLicencias();
-        renderColaboradores();
-        showNotification('✅ Licencia eliminada');
+        try {
+            await deleteLicenciaDB(id);
+            database.licencias = database.licencias.filter(l => l._id !== id);
+            database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== id);
+            renderLicencias();
+            renderColaboradores();
+            showNotification('✅ Licencia eliminada');
+        } catch(e) {
+            console.error('Error eliminando licencia:', e);
+            showNotification('❌ Error al eliminar. Revisa la consola.', 'error');
+        }
     }
 }
 
@@ -177,35 +186,40 @@ function filterUsuariosAsignar() {
     });
 }
 
-function guardarAsignacionesLicencia() {
+async function guardarAsignacionesLicencia() {
     const licenciaId = document.getElementById('licenciaAsignarId').value;
     const checkboxes = document.querySelectorAll('#listaUsuariosAsignar input[type="checkbox"]');
     
-    // Eliminar asignaciones antiguas de esta licencia
-    database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => 
-        la.licenciaId !== licenciaId
-    );
-    
-    // Agregar nuevas asignaciones
-    checkboxes.forEach((checkbox, index) => {
-        if (checkbox.checked) {
-            const item = checkbox.closest('.usuario-asignar-item');
-            const colaboradorId = database.colaboradores[index]._id;
-            
-            database.licenciasAsignaciones.push({
-                _id: 'LA' + Date.now() + '_' + index,
-                licenciaId: licenciaId,
-                colaboradorId: colaboradorId,
-                fechaAsignacion: new Date().toISOString()
-            });
+    try {
+        await deleteLicenciaAsignacionesPorLicencia(licenciaId);
+        database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== licenciaId);
+
+        const nuevas = [];
+        checkboxes.forEach((checkbox, index) => {
+            if (checkbox.checked) {
+                const colaboradorId = database.colaboradores[index]._id;
+                nuevas.push({
+                    _id: 'LA' + Date.now() + '_' + index,
+                    licenciaId: licenciaId,
+                    colaboradorId: colaboradorId,
+                    fechaAsignacion: new Date().toISOString()
+                });
+            }
+        });
+
+        for (const la of nuevas) {
+            await upsertLicenciaAsignacion(la);
+            database.licenciasAsignaciones.push(la);
         }
-    });
-    
-    saveData();
-    renderLicencias();
-    renderColaboradores();
-    closeModal('modalAsignarUsuarios');
-    showNotification('✅ Asignaciones guardadas correctamente');
+
+        renderLicencias();
+        renderColaboradores();
+        closeModal('modalAsignarUsuarios');
+        showNotification('✅ Asignaciones guardadas correctamente');
+    } catch(e) {
+        console.error('Error guardando asignaciones de licencia:', e);
+        showNotification('❌ Error al guardar asignaciones.', 'error');
+    }
 }
 
 function seleccionarTodosUsuarios() {

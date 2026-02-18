@@ -4,7 +4,7 @@ function getVal(id) {
     return el ? el.value : '';
 }
 
-function saveEquipo(event) {
+async function saveEquipo(event) {
     event.preventDefault();
 
     if (!database.citasMantenimiento) database.citasMantenimiento = [];
@@ -43,20 +43,24 @@ function saveEquipo(event) {
             : new Date().toISOString()
     };
 
-    if (id) {
-        const index = database.equipos.findIndex(e => e._id === id);
-        database.equipos[index] = equipo;
-        showNotification('✅ Equipo actualizado');
-    } else {
-        database.equipos.push(equipo);
-        showNotification('✅ Equipo creado');
+    try {
+        await upsertEquipo(equipo);
+        if (id) {
+            const index = database.equipos.findIndex(e => e._id === id);
+            database.equipos[index] = equipo;
+            showNotification('✅ Equipo actualizado');
+        } else {
+            database.equipos.push(equipo);
+            showNotification('✅ Equipo creado');
+        }
+        renderEquipos();
+        if (typeof updateDashboard === 'function') updateDashboard();
+        if (typeof updateReportesStats === 'function') updateReportesStats();
+        closeModal('modalEquipo');
+    } catch(e) {
+        console.error('Error guardando equipo:', e);
+        showNotification('❌ Error al guardar equipo. Revisa la consola.', 'error');
     }
-
-    saveData();
-    renderEquipos();
-    if (typeof updateDashboard === 'function') updateDashboard();
-    if (typeof updateReportesStats === 'function') updateReportesStats();
-    closeModal('modalEquipo');
 }
 
 function renderEquipos() {
@@ -131,11 +135,9 @@ function renderEquipos() {
                 <td>${colaborador ? colaborador.nombre : '-'}</td>
                 <td>${eq.observaciones || '-'}</td>
                 <td class="action-buttons">
-                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-info" onclick='verDetalleEquipo("${eq._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editEquipo("${eq._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteEquipo("${eq._id}")'>🗑️</button>
-                </div>
                 </td>
             </tr>
         `;
@@ -390,7 +392,7 @@ function guardarCitaMantenimiento(event) {
         estado:    'Pendiente',
         createdAt: new Date().toISOString()
     });
-    saveData();
+    // saveData() - now handled by Supabase
     closeModal('modalAgendarMantenimiento');
     showNotification('✅ Cita de mantenimiento agendada');
     verDetalleEquipo(equipoId);
@@ -458,7 +460,7 @@ function confirmarMantenimientoCompletado(event) {
         }
     }
 
-    saveData();
+    // saveData() - now handled by Supabase
     renderEquipos();
     closeModal('modalCompletarMantenimiento');
     showNotification('✅ Mantenimiento completado. Estado y condición actualizados.');
@@ -470,7 +472,7 @@ function cancelarCita(citaId, equipoId) {
     if (!database.citasMantenimiento) database.citasMantenimiento = [];
     const cita = database.citasMantenimiento.find(c => c._id === citaId);
     if (cita) cita.estado = 'Cancelada';
-    saveData();
+    // saveData() - now handled by Supabase
     showNotification('✅ Cita cancelada');
     verDetalleEquipo(equipoId);
 }
@@ -818,7 +820,7 @@ function editEquipo(id) {
     openModal('modalEquipo');
 }
 
-function deleteEquipo(id) {
+async function deleteEquipo(id) {
     const asignaciones = database.asignaciones.filter(a => a.equipoId === id && a.estado === 'Activa');
     
     if (asignaciones.length > 0) {
@@ -827,11 +829,16 @@ function deleteEquipo(id) {
     }
     
     if (confirm('¿Estás seguro de eliminar este equipo?')) {
-        database.equipos = database.equipos.filter(e => e._id !== id);
-        saveData();
-        renderEquipos();
-        updateDashboard();
-        showNotification('✅ Equipo eliminado');
+        try {
+            await deleteEquipoDB(id);
+            database.equipos = database.equipos.filter(e => e._id !== id);
+            renderEquipos();
+            updateDashboard();
+            showNotification('✅ Equipo eliminado');
+        } catch(err) {
+            console.error('Error eliminando equipo:', err);
+            showNotification('❌ Error al eliminar. Revisa la consola.', 'error');
+        }
     }
 }
 

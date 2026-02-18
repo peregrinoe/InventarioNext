@@ -11,7 +11,7 @@ const SUPABASE_KEY = 'sb_publishable_Vd4i7BPDyhXpe4W191xQdQ_icot6e-V';  // ← C
 // ================================
 
 // Cliente Supabase (usa la librería cargada en index.html)
-let supabaseClient;
+let supabase;
 
 // Base de datos en memoria (igual que antes, se sincroniza con Supabase)
 let database = {
@@ -50,7 +50,7 @@ function initSupabase() {
         return false;
     }
 
-    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log('✅ Supabase inicializado correctamente');
     return true;
 }
@@ -208,7 +208,6 @@ function mapLicencia(row) {
 }
 
 
-function mapAsignacion(row) {
     return {
         _id: row.id,
         colaboradorId: row.colaborador_id,

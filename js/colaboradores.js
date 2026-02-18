@@ -8,7 +8,7 @@ let ordenColaboradores = {
     direccion: 'asc'
 };
 
-function saveColaborador(event) {
+async function saveColaborador(event) {
     event.preventDefault();
     
     const id = document.getElementById('colaboradorId').value;
@@ -23,22 +23,26 @@ function saveColaborador(event) {
         jefeInmediato: document.getElementById('colaboradorJefeInmediato').value,
         esExterno: document.getElementById('colaboradorEsExterno')?.checked || false, // NUEVO CAMPO
         foto: document.getElementById('colaboradorFoto').value || '',
-        createdAt: id ? database.colaboradores.find(c => c._id === id).createdAt : new Date().toISOString()
+        createdAt: id ? (database.colaboradores.find(c => c._id === id) || {}).createdAt || new Date().toISOString() : new Date().toISOString()
     };
     
-    if (id) {
-        const index = database.colaboradores.findIndex(c => c._id === id);
-        database.colaboradores[index] = colaborador;
-        showNotification('✅ Colaborador actualizado');
-    } else {
-        database.colaboradores.push(colaborador);
-        showNotification('✅ Colaborador creado');
+    try {
+        await upsertColaborador(colaborador);
+        if (id) {
+            const index = database.colaboradores.findIndex(c => c._id === id);
+            if (index !== -1) database.colaboradores[index] = colaborador;
+            showNotification('✅ Colaborador actualizado');
+        } else {
+            database.colaboradores.push(colaborador);
+            showNotification('✅ Colaborador creado');
+        }
+        renderColaboradores();
+        updateDashboard();
+        closeModal('modalColaborador');
+    } catch(e) {
+        console.error('Error guardando colaborador:', e);
+        showNotification('❌ Error al guardar. Revisa la consola.', 'error');
     }
-    
-    saveData();
-    renderColaboradores();
-    updateDashboard();
-    closeModal('modalColaborador');
 }
 
 // NUEVA FUNCIÓN: Ordenar colaboradores
@@ -147,12 +151,10 @@ function renderColaboradores() {
                 <td><span class="badge badge-info">${equiposAsignados} equipo(s)</span></td>
                 <td><span class="badge badge-success">${licenciasAsignadas} licencia(s)</span></td>
                 <td class="action-buttons">
-                    <div class="action-buttons-inner">
-                        ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
-                        <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
-                        <button class="btn btn-sm btn-primary" onclick='editColaborador("${col._id}")'>✏️</button>
-                        <button class="btn btn-sm btn-danger" onclick='deleteColaborador("${col._id}")'>🗑️</button>
-                    </div>
+                    ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
+                    <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
+                    <button class="btn btn-sm btn-primary" onclick='editColaborador("${col._id}")'>✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick='deleteColaborador("${col._id}")'>🗑️</button>
                 </td>
             </tr>
         `;
@@ -212,7 +214,7 @@ function editColaborador(id) {
     openModal('modalColaborador');
 }
 
-function deleteColaborador(id) {
+async function deleteColaborador(id) {
     const asignaciones = database.asignaciones.filter(a => a.colaboradorId === id && a.estado === 'Activa');
     
     if (asignaciones.length > 0) {
@@ -221,11 +223,18 @@ function deleteColaborador(id) {
     }
     
     if (confirm('¿Estás seguro de eliminar este colaborador?')) {
-        database.colaboradores = database.colaboradores.filter(c => c._id !== id);
-        saveData();
-        renderColaboradores();
-        updateDashboard();
-        showNotification('✅ Colaborador eliminado');
+        try {
+            await deleteColaboradorDB(id);
+            database.colaboradores = database.colaboradores.filter(c => c._id !== id);
+            database.asignaciones = database.asignaciones.filter(a => a.colaboradorId !== id);
+            database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.colaboradorId !== id);
+            renderColaboradores();
+            updateDashboard();
+            showNotification('✅ Colaborador eliminado');
+        } catch(e) {
+            console.error('Error eliminando colaborador:', e);
+            showNotification('❌ Error al eliminar. Revisa la consola.', 'error');
+        }
     }
 }
 
@@ -722,3 +731,4 @@ function verDetalleColaborador(id) {
     document.getElementById('detalleColaboradorContent').innerHTML = content;
     openModal('modalDetalleColaborador');
 }
+

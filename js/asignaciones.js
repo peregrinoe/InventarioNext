@@ -71,7 +71,7 @@ function abrirNuevaAsignacion() {
     openModal('modalAsignacion');
 }
 
-function saveAsignacion(event) {
+async function saveAsignacion(event) {
     event.preventDefault();
     
     // Verificar que exista el campo asignacionId
@@ -129,6 +129,13 @@ function saveAsignacion(event) {
             }
         }
         
+        try {
+            await upsertAsignacion(asignacion);
+        } catch(e) {
+            console.error('Error actualizando asignación:', e);
+            showNotification('❌ Error al actualizar asignación.', 'error');
+            return;
+        }
         showNotification('✅ Asignación actualizada correctamente');
     } else {
         // CREAR nueva asignación
@@ -150,10 +157,18 @@ function saveAsignacion(event) {
             equipo.estado = 'Asignado';
         }
         
-        showNotification('✅ Equipo asignado correctamente');
+        try {
+            await upsertAsignacion(asignacion);
+            const equipo = database.equipos.find(e => e._id === equipoId);
+            if (equipo) await upsertEquipo(equipo);
+            showNotification('✅ Equipo asignado correctamente');
+        } catch(e) {
+            console.error('Error guardando asignación:', e);
+            showNotification('❌ Error al guardar asignación.', 'error');
+            return;
+        }
     }
     
-    saveData();
     renderAsignaciones();
     if (typeof renderEquipos === 'function') renderEquipos();
     if (typeof updateDashboard === 'function') updateDashboard();
@@ -198,14 +213,12 @@ function renderAsignaciones() {
                 <td>${estadoBadge}</td>
                 <td>${asig.observaciones || '-'}</td>
                 <td class="action-buttons">
-                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-primary" onclick='editAsignacion("${asig._id}")' title="Editar asignación">✏️ Editar</button>
                     ${asig.estado === 'Activa' ? 
                         `<button class="btn btn-sm btn-warning" onclick='devolverEquipo("${asig._id}")' title="Devolver equipo">↩️ Devolver</button>` : 
                         ''
                     }
                     <button class="btn btn-sm btn-danger" onclick='deleteAsignacion("${asig._id}")' title="Eliminar asignación">🗑️</button>
-                </div>
                 </td>
             </tr>
         `;
@@ -289,7 +302,7 @@ function editAsignacion(id) {
     openModal('modalAsignacion');
 }
 
-function devolverEquipo(asignacionId) {
+async function devolverEquipo(asignacionId) {
     if (confirm('¿Confirmar devolución del equipo?')) {
         const asignacion = database.asignaciones.find(a => a._id === asignacionId);
         if (!asignacion) {
@@ -297,23 +310,27 @@ function devolverEquipo(asignacionId) {
             return;
         }
         
-        asignacion.estado = 'Devuelto';
-        asignacion.fechaDevolucion = new Date().toISOString().split('T')[0];
-        
-        const equipo = database.equipos.find(e => e._id === asignacion.equipoId);
-        if (equipo) {
-            equipo.estado = 'Disponible';
+        try {
+            asignacion.estado = 'Devuelto';
+            asignacion.fechaDevolucion = new Date().toISOString().split('T')[0];
+            await upsertAsignacion(asignacion);
+            const equipo = database.equipos.find(e => e._id === asignacion.equipoId);
+            if (equipo) {
+                equipo.estado = 'Disponible';
+                await upsertEquipo(equipo);
+            }
+            renderAsignaciones();
+            if (typeof renderEquipos === 'function') renderEquipos();
+            if (typeof updateDashboard === 'function') updateDashboard();
+            showNotification('✅ Equipo devuelto correctamente');
+        } catch(e) {
+            console.error('Error devolviendo equipo:', e);
+            showNotification('❌ Error al registrar devolución.', 'error');
         }
-        
-        saveData();
-        renderAsignaciones();
-        if (typeof renderEquipos === 'function') renderEquipos();
-        if (typeof updateDashboard === 'function') updateDashboard();
-        showNotification('✅ Equipo devuelto correctamente');
     }
 }
 
-function deleteAsignacion(id) {
+async function deleteAsignacion(id) {
     if (confirm('¿Estás seguro de eliminar esta asignación?')) {
         const asignacion = database.asignaciones.find(a => a._id === id);
         
@@ -324,12 +341,17 @@ function deleteAsignacion(id) {
             }
         }
         
-        database.asignaciones = database.asignaciones.filter(a => a._id !== id);
-        saveData();
-        renderAsignaciones();
-        if (typeof renderEquipos === 'function') renderEquipos();
-        if (typeof updateDashboard === 'function') updateDashboard();
-        showNotification('✅ Asignación eliminada');
+        try {
+            await supabaseClient.from('asignaciones').delete().eq('id', id);
+            database.asignaciones = database.asignaciones.filter(a => a._id !== id);
+            renderAsignaciones();
+            if (typeof renderEquipos === 'function') renderEquipos();
+            if (typeof updateDashboard === 'function') updateDashboard();
+            showNotification('✅ Asignación eliminada');
+        } catch(e) {
+            console.error('Error eliminando asignación:', e);
+            showNotification('❌ Error al eliminar asignación.', 'error');
+        }
     }
 }
 
@@ -360,7 +382,7 @@ function saveLicencia(event) {
         showNotification('✅ Licencia creada');
     }
     
-    saveData();
+    // saveData() - now handled by Supabase
     renderLicencias();
     closeModal('modalLicencia');
 }
@@ -401,12 +423,10 @@ function renderLicencias() {
                 <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
                 <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
                 <td class="action-buttons">
-                    <div class="action-buttons-inner">
                     <button class="btn btn-sm btn-success" onclick='abrirAsignarUsuarios("${lic._id}")'>👥 Asignar</button>
                     <button class="btn btn-sm btn-info" onclick='verDetalleLicencia("${lic._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editLicencia("${lic._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteLicencia("${lic._id}")'>🗑️</button>
-                </div>
                 </td>
             </tr>
         `;
@@ -443,7 +463,7 @@ function deleteLicencia(id) {
     
     if (confirm('¿Estás seguro de eliminar esta licencia?')) {
         database.licencias = database.licencias.filter(l => l._id !== id);
-        saveData();
+        // saveData() - now handled by Supabase
         renderLicencias();
         if (typeof renderColaboradores === 'function') {
             renderColaboradores();
@@ -535,7 +555,7 @@ function guardarAsignacionesLicencia() {
         }
     });
     
-    saveData();
+    // saveData() - now handled by Supabase
     renderLicencias();
     if (typeof renderColaboradores === 'function') {
         renderColaboradores();

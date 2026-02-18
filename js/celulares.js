@@ -71,7 +71,7 @@ function borrarTodasFotosCelular() {
     showNotification('🗑️ Todas las fotos eliminadas', 'success');
 }
 
-function saveCelular(event) {
+async function saveCelular(event) {
     event.preventDefault();
     
     const id = document.getElementById('celularId').value;
@@ -104,20 +104,23 @@ function saveCelular(event) {
         createdAt: id ? database.celulares.find(c => c._id === id).createdAt : new Date().toISOString()
     };
     
-    if (id) {
-        const index = database.celulares.findIndex(c => c._id === id);
-        database.celulares[index] = celular;
-        showNotification('✅ Celular actualizado');
-    } else {
-        database.celulares.push(celular);
-        showNotification('✅ Celular creado');
+    try {
+        await upsertCelular(celular);
+        if (id) {
+            const index = database.celulares.findIndex(c => c._id === id);
+            if (index !== -1) database.celulares[index] = celular;
+            showNotification('✅ Celular actualizado');
+        } else {
+            database.celulares.push(celular);
+            showNotification('✅ Celular creado');
+        }
+        renderCelulares();
+        updateDashboard();
+        closeModal('modalCelular');
+    } catch(e) {
+        console.error('Error guardando celular:', e);
+        showNotification('❌ Error al guardar celular. Revisa la consola.', 'error');
     }
-    
-    saveData();
-    renderCelulares();
-    updateDashboard();
-    closeModal('modalCelular');
-}
 
 function renderCelulares() {
     const tbody = document.getElementById('celularesTableBody');
@@ -433,7 +436,7 @@ function editCelular(id) {
     openModal('modalCelular');
 }
 
-function deleteCelular(id) {
+async function deleteCelular(id) {
     const asignaciones = database.asignacionesCelulares.filter(a => a.celularId === id && a.estado === 'Activa');
     
     if (asignaciones.length > 0) {
@@ -442,11 +445,17 @@ function deleteCelular(id) {
     }
     
     if (confirm('¿Estás seguro de eliminar este celular?')) {
-        database.celulares = database.celulares.filter(c => c._id !== id);
-        saveData();
-        renderCelulares();
-        updateDashboard();
-        showNotification('✅ Celular eliminado');
+        try {
+            await deleteCelularDB(id);
+            database.celulares = database.celulares.filter(c => c._id !== id);
+            database.asignacionesCelulares = database.asignacionesCelulares.filter(a => a.celularId !== id);
+            renderCelulares();
+            updateDashboard();
+            showNotification('✅ Celular eliminado');
+        } catch(e) {
+            console.error('Error eliminando celular:', e);
+            showNotification('❌ Error al eliminar. Revisa la consola.', 'error');
+        }
     }
 }
 
@@ -542,7 +551,7 @@ function saveAsignacionCelular(event) {
         celular.estado = 'Asignado';
     }
 
-    saveData();
+    // saveData() - now handled by Supabase
     renderCelulares();
     if (typeof updateDashboard === 'function') updateDashboard();
     closeModal('modalAsignacionCelular');
@@ -568,9 +577,10 @@ function devolverCelular(celularId) {
         celular.estado = 'Disponible';
     }
 
-    saveData();
+    // saveData() - now handled by Supabase
     renderCelulares();
     if (typeof updateDashboard === 'function') updateDashboard();
     showNotification('✅ Celular devuelto correctamente');
 }
 
+}
