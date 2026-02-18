@@ -1,8 +1,19 @@
 // ================================
-// BASE DE DATOS Y FUNCIONES CORE
+// BASE DE DATOS - SUPABASE
+// ================================
+// 
+// 🔧 CONFIGURACIÓN REQUERIDA:
+// Reemplaza estos dos valores con los de tu proyecto en Supabase
+// Los encuentras en: supabase.com → Tu proyecto → Settings → API
+//
+const SUPABASE_URL = 'https://chxfhirgehvvykordrnd.supabase.co';  // ← Cambia esto
+const SUPABASE_KEY = 'sb_publishable_Vd4i7BPDyhXpe4W191xQdQ_icot6e-V';  // ← Cambia esto (usa la "anon public")
 // ================================
 
-// Base de datos NoSQL simulada
+// Cliente Supabase (usa la librería cargada en index.html)
+let supabaseClient;
+
+// Base de datos en memoria (igual que antes, se sincroniza con Supabase)
 let database = {
     colaboradores: [],
     equipos: [],
@@ -13,251 +24,441 @@ let database = {
     licenciasAsignaciones: []
 };
 
-// Mostrar notificación
+// ================================
+// INICIALIZACIÓN
+// ================================
+
+function initSupabase() {
+    // La librería puede exponerse como window.supabase o window.supabase.createClient
+    // dependiendo del bundle (UMD vs ESM)
+    let createClient;
+
+    if (typeof window.supabase !== 'undefined') {
+        if (typeof window.supabase.createClient === 'function') {
+            // UMD bundle: window.supabase.createClient(...)
+            createClient = window.supabase.createClient.bind(window.supabase);
+        } else if (typeof window.supabase === 'function') {
+            // Alternativa: window.supabase(...)
+            createClient = window.supabase;
+        }
+    }
+
+    if (!createClient) {
+        console.error('❌ Librería Supabase no cargada correctamente');
+        console.error('window.supabase =', window.supabase);
+        showNotification('❌ Error de conexión con la base de datos', 'error');
+        return false;
+    }
+
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('✅ Supabase inicializado correctamente');
+    return true;
+}
+
+// ================================
+// CARGA DE DATOS DESDE SUPABASE
+// ================================
+
+async function loadData() {
+    if (!initSupabase()) return;
+
+    showLoadingIndicator(true);
+
+    try {
+        // Cargar todas las tablas en paralelo
+        const [
+            colaboradoresRes,
+            equiposRes,
+            celularesRes,
+            asignacionesRes,
+            asignacionesCelularesRes,
+            licenciasRes,
+            licenciasAsignacionesRes
+        ] = await Promise.all([
+            supabaseClient.from('colaboradores').select('*').order('nombre'),
+            supabaseClient.from('equipos').select('*'),
+            supabaseClient.from('celulares').select('*'),
+            supabaseClient.from('asignaciones').select('*'),
+            supabaseClient.from('asignaciones_celulares').select('*'),
+            supabaseClient.from('licencias').select('*'),
+            supabaseClient.from('licencias_asignaciones').select('*')
+        ]);
+
+        // Verificar errores
+        const errores = [
+            colaboradoresRes, equiposRes, celularesRes,
+            asignacionesRes, asignacionesCelularesRes,
+            licenciasRes, licenciasAsignacionesRes
+        ].filter(r => r.error);
+
+        if (errores.length > 0) {
+            console.error('Errores al cargar:', errores.map(e => e.error));
+            showNotification('⚠️ Error al cargar algunos datos. Verifica la configuración.', 'error');
+        }
+
+        // Guardar en memoria local (mapear snake_case de DB a camelCase si es necesario)
+        database.colaboradores         = colaboradoresRes.data || [];
+        database.equipos               = equiposRes.data || [];
+        database.celulares             = celularesRes.data || [];
+        database.asignaciones          = (asignacionesRes.data || []).map(mapAsignacion);
+        database.asignacionesCelulares = (asignacionesCelularesRes.data || []).map(mapAsignacionCelular);
+        database.licencias             = licenciasRes.data || [];
+        database.licenciasAsignaciones = (licenciasAsignacionesRes.data || []).map(mapLicenciaAsignacion);
+
+        console.log('✅ Datos cargados desde Supabase:', {
+            colaboradores: database.colaboradores.length,
+            equipos: database.equipos.length,
+            celulares: database.celulares.length,
+            licencias: database.licencias.length
+        });
+
+        renderAll();
+
+    } catch (error) {
+        console.error('Error fatal al cargar datos:', error);
+        showNotification('❌ No se pudo conectar con la base de datos', 'error');
+    } finally {
+        showLoadingIndicator(false);
+    }
+}
+
+// Mappers: convierten nombres de columnas DB → nombres que usa el resto del código
+function mapAsignacion(row) {
+    return {
+        _id: row.id,
+        colaboradorId: row.colaborador_id,
+        equipoId: row.equipo_id,
+        fechaAsignacion: row.fecha_asignacion,
+        fechaDevolucion: row.fecha_devolucion,
+        estado: row.estado,
+        notas: row.notas
+    };
+}
+
+function mapAsignacionCelular(row) {
+    return {
+        _id: row.id,
+        colaboradorId: row.colaborador_id,
+        celularId: row.celular_id,
+        fechaAsignacion: row.fecha_asignacion,
+        fechaDevolucion: row.fecha_devolucion,
+        estado: row.estado,
+        notas: row.notas
+    };
+}
+
+function mapLicenciaAsignacion(row) {
+    return {
+        _id: row.id,
+        licenciaId: row.licencia_id,
+        colaboradorId: row.colaborador_id,
+        fechaAsignacion: row.fecha_asignacion
+    };
+}
+
+// ================================
+// GUARDAR DATOS EN SUPABASE
+// ================================
+
+// saveData() ahora es un no-op porque cada módulo llama directamente
+// a las funciones específicas (upsertColaborador, upsertEquipo, etc.)
+// Se mantiene por compatibilidad con código existente.
+function saveData() {
+    console.log('ℹ️ saveData() llamado - los datos ya se guardan directamente en Supabase');
+}
+
+// --- COLABORADORES ---
+async function upsertColaborador(colaborador) {
+    const row = {
+        id: colaborador._id,
+        nombre: colaborador.nombre,
+        email: colaborador.email,
+        telefono: colaborador.telefono || null,
+        departamento: colaborador.departamento,
+        puesto: colaborador.puesto,
+        fecha_ingreso: colaborador.fechaIngreso || null,
+        jefe_inmediato: colaborador.jefeInmediato || null,
+        es_externo: colaborador.esExterno || false,
+        foto: colaborador.foto || null,
+        created_at: colaborador.createdAt
+    };
+
+    const { error } = await supabaseClient.from('colaboradores').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+async function deleteColaboradorDB(id) {
+    const { error } = await supabaseClient.from('colaboradores').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// --- EQUIPOS ---
+async function upsertEquipo(equipo) {
+    const row = {
+        id: equipo._id,
+        marca: equipo.marca,
+        modelo: equipo.modelo,
+        tipo: equipo.tipo,
+        num_serie: equipo.numSerie,
+        procesador: equipo.procesador || null,
+        ram: equipo.ram || null,
+        almacenamiento: equipo.almacenamiento || null,
+        estado: equipo.estado,
+        condicion: equipo.condicion || null,
+        categoria: equipo.categoria || null,
+        precio: equipo.precio || null,
+        fecha_compra: equipo.fechaCompra || null,
+        garantia: equipo.garantia || null,
+        fecha_garantia: equipo.fechaGarantia || null,
+        ultimo_mantenimiento: equipo.ultimoMantenimiento || null,
+        frecuencia_mantenimiento: equipo.frecuenciaMantenimiento || null,
+        fotos: equipo.fotos ? JSON.stringify(equipo.fotos) : null,
+        observaciones: equipo.observaciones || null,
+        created_at: equipo.createdAt
+    };
+
+    const { error } = await supabaseClient.from('equipos').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+async function deleteEquipoDB(id) {
+    const { error } = await supabaseClient.from('equipos').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// --- CELULARES ---
+async function upsertCelular(celular) {
+    const row = {
+        id: celular._id,
+        marca: celular.marca,
+        modelo: celular.modelo,
+        imei: celular.imei || null,
+        numero: celular.numero || null,
+        compania: celular.compania || null,
+        plan: celular.plan || null,
+        estado: celular.estado,
+        condicion: celular.condicion || null,
+        precio: celular.precio || null,
+        fecha_compra: celular.fechaCompra || null,
+        fotos: celular.fotos ? JSON.stringify(celular.fotos) : null,
+        observaciones: celular.observaciones || null,
+        created_at: celular.createdAt
+    };
+
+    const { error } = await supabaseClient.from('celulares').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+async function deleteCelularDB(id) {
+    const { error } = await supabaseClient.from('celulares').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// --- ASIGNACIONES ---
+async function upsertAsignacion(asig) {
+    const row = {
+        id: asig._id,
+        colaborador_id: asig.colaboradorId,
+        equipo_id: asig.equipoId,
+        fecha_asignacion: asig.fechaAsignacion,
+        fecha_devolucion: asig.fechaDevolucion || null,
+        estado: asig.estado,
+        notas: asig.notas || null
+    };
+
+    const { error } = await supabaseClient.from('asignaciones').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+async function upsertAsignacionCelular(asig) {
+    const row = {
+        id: asig._id,
+        colaborador_id: asig.colaboradorId,
+        celular_id: asig.celularId,
+        fecha_asignacion: asig.fechaAsignacion,
+        fecha_devolucion: asig.fechaDevolucion || null,
+        estado: asig.estado,
+        notas: asig.notas || null
+    };
+
+    const { error } = await supabaseClient.from('asignaciones_celulares').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+// --- LICENCIAS ---
+async function upsertLicencia(lic) {
+    const row = {
+        id: lic._id,
+        software: lic.software,
+        tipo: lic.tipo,
+        clave: lic.clave || null,
+        fecha_compra: lic.fechaCompra || null,
+        fecha_vencimiento: lic.fechaVencimiento || null,
+        estado: lic.estado,
+        notas: lic.notas || null,
+        created_at: lic.createdAt
+    };
+
+    const { error } = await supabaseClient.from('licencias').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+async function deleteLicenciaDB(id) {
+    const { error } = await supabaseClient.from('licencias').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function upsertLicenciaAsignacion(la) {
+    const row = {
+        id: la._id,
+        licencia_id: la.licenciaId,
+        colaborador_id: la.colaboradorId,
+        fecha_asignacion: la.fechaAsignacion
+    };
+
+    const { error } = await supabaseClient.from('licencias_asignaciones').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+async function deleteLicenciaAsignacionesPorLicencia(licenciaId) {
+    const { error } = await supabaseClient
+        .from('licencias_asignaciones')
+        .delete()
+        .eq('licencia_id', licenciaId);
+    if (error) throw error;
+}
+
+// ================================
+// EXPORTAR / IMPORTAR JSON
+// ================================
+
+function exportarDatos() {
+    const dataStr = JSON.stringify(database, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `inventario_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+
+    showNotification('✅ Datos exportados correctamente', 'success');
+}
+
+async function importarDatos(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+
+            if (!importedData.colaboradores || !Array.isArray(importedData.colaboradores)) {
+                showNotification('❌ Archivo inválido: falta "colaboradores"', 'error'); return;
+            }
+            if (!importedData.equipos || !Array.isArray(importedData.equipos)) {
+                showNotification('❌ Archivo inválido: falta "equipos"', 'error'); return;
+            }
+            if (!importedData.asignaciones || !Array.isArray(importedData.asignaciones)) {
+                showNotification('❌ Archivo inválido: falta "asignaciones"', 'error'); return;
+            }
+
+            showNotification('⏳ Importando datos en Supabase...', 'success');
+
+            // Subir todo a Supabase
+            for (const col of (importedData.colaboradores || [])) {
+                await upsertColaborador(col);
+            }
+            for (const eq of (importedData.equipos || [])) {
+                await upsertEquipo(eq);
+            }
+            for (const cel of (importedData.celulares || [])) {
+                await upsertCelular(cel);
+            }
+            for (const asig of (importedData.asignaciones || [])) {
+                await upsertAsignacion(asig);
+            }
+            for (const asig of (importedData.asignacionesCelulares || [])) {
+                await upsertAsignacionCelular(asig);
+            }
+            for (const lic of (importedData.licencias || [])) {
+                await upsertLicencia(lic);
+            }
+            for (const la of (importedData.licenciasAsignaciones || [])) {
+                await upsertLicenciaAsignacion(la);
+            }
+
+            showNotification('✅ Importación completa. Recargando...', 'success');
+            setTimeout(() => location.reload(), 1500);
+
+        } catch (error) {
+            console.error('Error al importar:', error);
+            showNotification(`❌ Error al importar: ${error.message}`, 'error');
+        }
+    };
+
+    reader.readAsText(file, 'UTF-8');
+    event.target.value = '';
+}
+
+// ================================
+// UTILIDADES DE UI
+// ================================
+
+function showLoadingIndicator(show) {
+    let loader = document.getElementById('globalLoader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'globalLoader';
+        loader.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            z-index: 9999; display: none;
+        `;
+        const style = document.createElement('style');
+        style.textContent = '@keyframes loading { 0%{background-position:200% 0} 100%{background-position:-200% 0} }';
+        document.head.appendChild(style);
+        document.body.appendChild(loader);
+    }
+    loader.style.display = show ? 'block' : 'none';
+}
+
 function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
     const notificationText = document.getElementById('notificationText');
-    
+
     notification.className = `notification ${type} show`;
     notificationText.textContent = message;
-    
+
     setTimeout(() => {
         notification.classList.remove('show');
     }, 3000);
 }
 
-// Exportar datos a JSON
-function exportarDatos() {
-    const dataStr = JSON.stringify(database, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = `inventario_backup_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    
-    showNotification('✅ Datos exportados correctamente', 'success');
+// Renderiza todas las secciones
+function renderAll() {
+    try { if (typeof updateDashboard === 'function') updateDashboard(); } catch(e) {}
+    try { if (typeof updateDashboardTable === 'function') updateDashboardTable(); } catch(e) {}
+    try { if (typeof renderColaboradores === 'function') renderColaboradores(); } catch(e) {}
+    try { if (typeof renderEquipos === 'function') renderEquipos(); } catch(e) {}
+    try { if (typeof renderCelulares === 'function') renderCelulares(); } catch(e) {}
+    try { if (typeof renderAsignaciones === 'function') renderAsignaciones(); } catch(e) {}
+    try { if (typeof renderLicencias === 'function') renderLicencias(); } catch(e) {}
 }
 
-// Importar datos desde JSON
-function importarDatos(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const importedData = JSON.parse(e.target.result);
-            
-            // Validar estructura básica
-            if (!importedData.colaboradores || !Array.isArray(importedData.colaboradores)) {
-                showNotification('❌ Error: El archivo no contiene el campo "colaboradores" válido', 'error');
-                return;
-            }
-            
-            if (!importedData.equipos || !Array.isArray(importedData.equipos)) {
-                showNotification('❌ Error: El archivo no contiene el campo "equipos" válido', 'error');
-                return;
-            }
-            
-            if (!importedData.asignaciones || !Array.isArray(importedData.asignaciones)) {
-                showNotification('❌ Error: El archivo no contiene el campo "asignaciones" válido', 'error');
-                return;
-            }
-            
-            // Asegurar que existan todos los campos necesarios
-            if (!importedData.celulares) {
-                importedData.celulares = [];
-            }
-            if (!importedData.asignacionesCelulares) {
-                importedData.asignacionesCelulares = [];
-            }
-            if (!importedData.licencias) {
-                importedData.licencias = [];
-            }
-            if (!importedData.licenciasAsignaciones) {
-                importedData.licenciasAsignaciones = [];
-            }
-            
-            // Importar datos
-            database = importedData;
-            saveData();
-            
-            // Renderizar todas las secciones
-            try {
-                if (typeof renderColaboradores === 'function') renderColaboradores();
-            } catch (e) {
-                console.error('Error al renderizar colaboradores:', e);
-            }
-            
-            try {
-                if (typeof renderEquipos === 'function') renderEquipos();
-            } catch (e) {
-                console.error('Error al renderizar equipos:', e);
-            }
-            
-            try {
-                if (typeof renderCelulares === 'function') renderCelulares();
-            } catch (e) {
-                console.error('Error al renderizar celulares:', e);
-            }
-            
-            try {
-                if (typeof renderAsignaciones === 'function') renderAsignaciones();
-            } catch (e) {
-                console.error('Error al renderizar asignaciones:', e);
-            }
-            
-            try {
-                if (typeof renderLicencias === 'function') renderLicencias();
-            } catch (e) {
-                console.error('Error al renderizar licencias:', e);
-            }
-            
-            try {
-                if (typeof updateDashboard === 'function') updateDashboard();
-            } catch (e) {
-                console.error('Error al actualizar dashboard:', e);
-            }
-            
-            const msg = `✅ Importados: ${database.colaboradores.length} colaboradores, ${database.equipos.length} equipos, ${database.celulares.length} celulares, ${database.licencias.length} licencias`;
-            showNotification(msg, 'success');
-            
-            // Recargar la página después de 1.5 segundos para asegurar que todo se renderice correctamente
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-            
-        } catch (error) {
-            console.error('Error al importar:', error);
-            showNotification(`❌ Error al leer el archivo: ${error.message}`, 'error');
-        }
-    };
-    
-    reader.onerror = function() {
-        showNotification('❌ Error al leer el archivo. Verifica que sea un archivo válido.', 'error');
-    };
-    
-    reader.readAsText(file, 'UTF-8');
-    
-    // Limpiar el input
-    event.target.value = '';
-}
+// ================================
+// NAVEGACIÓN Y MODALES
+// ================================
 
-// Cargar datos del localStorage
-function loadData() {
-    const savedData = localStorage.getItem('inventarioDB');
-    if (savedData) {
-        try {
-            database = JSON.parse(savedData);
-            console.log('✅ Datos cargados:', database);
-        } catch (e) {
-            console.error('Error al parsear datos:', e);
-            database = {
-                colaboradores: [],
-                equipos: [],
-                celulares: [],
-                asignaciones: [],
-                asignacionesCelulares: [],
-                licencias: [],
-                licenciasAsignaciones: []
-            };
-        }
-    }
-    
-    // Asegurar que existan los arrays necesarios
-    if (!database.licencias) {
-        database.licencias = [];
-    }
-    if (!database.licenciasAsignaciones) {
-        database.licenciasAsignaciones = [];
-    }
-    if (!database.celulares) {
-        database.celulares = [];
-    }
-    if (!database.asignacionesCelulares) {
-        database.asignacionesCelulares = [];
-    }
-    
-    // Llamar a las funciones de renderizado solo si existen
-    // Esto evita errores si los scripts aún no se han cargado
-    try {
-        if (typeof updateDashboard === 'function') {
-            updateDashboard();
-        }
-    } catch (e) {
-        console.error('Error en updateDashboard:', e);
-    }
-    
-    try {
-        if (typeof renderColaboradores === 'function') {
-            renderColaboradores();
-        }
-    } catch (e) {
-        console.error('Error en renderColaboradores:', e);
-    }
-    
-    try {
-        if (typeof renderEquipos === 'function') {
-            renderEquipos();
-        }
-    } catch (e) {
-        console.error('Error en renderEquipos:', e);
-    }
-    
-    try {
-        if (typeof renderCelulares === 'function') {
-            renderCelulares();
-        }
-    } catch (e) {
-        console.error('Error en renderCelulares:', e);
-    }
-    
-    try {
-        if (typeof renderAsignaciones === 'function') {
-            renderAsignaciones();
-        }
-    } catch (e) {
-        console.error('Error en renderAsignaciones:', e);
-    }
-    
-    try {
-        if (typeof renderLicencias === 'function') {
-            renderLicencias();
-        }
-    } catch (e) {
-        console.error('Error en renderLicencias:', e);
-    }
-}
-
-// Guardar datos en localStorage
-function saveData() {
-    try {
-        localStorage.setItem('inventarioDB', JSON.stringify(database));
-        console.log('✅ Datos guardados');
-    } catch (e) {
-        console.error('Error al guardar datos:', e);
-        showNotification('❌ Error al guardar datos', 'error');
-    }
-}
-
-// Funciones de navegación
 function showSection(sectionId) {
-    // Ocultar todas las secciones
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    // Mostrar la sección seleccionada
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById(sectionId).classList.add('active');
-    
-    // Actualizar botones de navegación
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
+
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
-    // Actualizar tablas y estadísticas según la sección
+
     if (sectionId === 'dashboard') {
         if (typeof updateDashboard === 'function') updateDashboard();
         if (typeof updateDashboardTable === 'function') updateDashboardTable();
@@ -268,8 +469,7 @@ function showSection(sectionId) {
 
 function openModal(modalId) {
     document.getElementById(modalId).classList.add('active');
-    
-    // Limpiar formularios al abrir modal de crear nuevo
+
     if (modalId === 'modalColaborador' && !document.getElementById('colaboradorId').value) {
         document.getElementById('formColaborador').reset();
         const preview = document.getElementById('colaboradorFotoPreview');
@@ -305,17 +505,18 @@ function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
 }
 
-// Cerrar modal al hacer clic fuera
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.classList.remove('active');
     }
 }
 
-// Cargar datos al iniciar - usar DOMContentLoaded para asegurar que todo esté cargado
+// ================================
+// INICIO
+// ================================
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadData);
 } else {
-    // Si el documento ya está cargado, ejecutar inmediatamente
     loadData();
 }
