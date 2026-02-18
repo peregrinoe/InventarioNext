@@ -179,16 +179,26 @@ function mapCelular(row) {
         _id: row.id,
         marca: row.marca,
         modelo: row.modelo,
-        imei: row.imei,
-        numero: row.numero,
-        compania: row.compania,
-        plan: row.plan,
+        imei: row.imei || '',
+        numero: row.numero || '',
+        compania: row.compania || '',
+        numSerie: row.num_serie || '',
+        propiedad: row.propiedad || 'Empresa',
+        almacenamiento: row.almacenamiento || '',
+        color: row.color || '',
+        so: row.so || '',
+        plan: row.plan || '',
+        costoPlan: row.costo_plan || '',
+        renovacionPlan: row.renovacion_plan || '',
         estado: row.estado,
-        condicion: row.condicion,
-        precio: row.precio,
-        fechaCompra: row.fecha_compra,
+        condicion: row.condicion || '',
+        precio: row.precio || '',
+        fechaCompra: row.fecha_compra || '',
+        proveedor: row.proveedor || '',
+        factura: row.factura || '',
+        garantiaMeses: row.garantia_meses || '',
         fotos: fotos,
-        observaciones: row.observaciones,
+        observaciones: row.observaciones || '',
         createdAt: row.created_at
     };
 }
@@ -325,11 +335,21 @@ async function upsertCelular(celular) {
         imei: celular.imei || null,
         numero: celular.numero || null,
         compania: celular.compania || null,
+        num_serie: celular.numSerie || null,
+        propiedad: celular.propiedad || null,
+        almacenamiento: celular.almacenamiento || null,
+        color: celular.color || null,
+        so: celular.so || null,
         plan: celular.plan || null,
+        costo_plan: celular.costoPlan || null,
+        renovacion_plan: celular.renovacionPlan || null,
         estado: celular.estado,
         condicion: celular.condicion || null,
         precio: celular.precio || null,
         fecha_compra: celular.fechaCompra || null,
+        proveedor: celular.proveedor || null,
+        factura: celular.factura || null,
+        garantia_meses: celular.garantiaMeses || null,
         fotos: celular.fotos ? JSON.stringify(celular.fotos) : null,
         observaciones: celular.observaciones || null,
         created_at: celular.createdAt
@@ -411,7 +431,7 @@ async function upsertLicenciaAsignacion(la) {
 }
 
 async function deleteLicenciaAsignacionesPorLicencia(licenciaId) {
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('licencias_asignaciones')
         .delete()
         .eq('licencia_id', licenciaId);

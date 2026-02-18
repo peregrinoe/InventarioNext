@@ -121,6 +121,7 @@ async function saveCelular(event) {
         console.error('Error guardando celular:', e);
         showNotification('❌ Error al guardar celular. Revisa la consola.', 'error');
     }
+}
 
 function renderCelulares() {
     const tbody = document.getElementById('celularesTableBody');
@@ -510,7 +511,7 @@ function abrirAsignarCelular(celularId) {
     openModal('modalAsignacionCelular');
 }
 
-function saveAsignacionCelular(event) {
+async function saveAsignacionCelular(event) {
     event.preventDefault();
 
     const celularId = document.getElementById('asignacionCelularId').value;
@@ -543,22 +544,27 @@ function saveAsignacionCelular(event) {
         createdAt: new Date().toISOString()
     };
 
-    database.asignacionesCelulares.push(asignacion);
+    try {
+        await upsertAsignacionCelular(asignacion);
+        database.asignacionesCelulares.push(asignacion);
 
-    // Actualizar estado del celular
-    const celular = database.celulares.find(c => c._id === celularId);
-    if (celular) {
-        celular.estado = 'Asignado';
+        const celular = database.celulares.find(c => c._id === celularId);
+        if (celular) {
+            celular.estado = 'Asignado';
+            await upsertCelular(celular);
+        }
+
+        renderCelulares();
+        if (typeof updateDashboard === 'function') updateDashboard();
+        closeModal('modalAsignacionCelular');
+        showNotification('✅ Celular asignado correctamente');
+    } catch(e) {
+        console.error('Error guardando asignación de celular:', e);
+        showNotification('❌ Error al guardar la asignación. Revisa la consola.', 'error');
     }
-
-    // saveData() - now handled by Supabase
-    renderCelulares();
-    if (typeof updateDashboard === 'function') updateDashboard();
-    closeModal('modalAsignacionCelular');
-    showNotification('✅ Celular asignado correctamente');
 }
 
-function devolverCelular(celularId) {
+async function devolverCelular(celularId) {
     if (!confirm('¿Confirmar devolución del celular?')) return;
 
     const asignacion = database.asignacionesCelulares.find(a =>
@@ -577,10 +583,16 @@ function devolverCelular(celularId) {
         celular.estado = 'Disponible';
     }
 
-    // saveData() - now handled by Supabase
-    renderCelulares();
-    if (typeof updateDashboard === 'function') updateDashboard();
-    showNotification('✅ Celular devuelto correctamente');
+    try {
+        await upsertAsignacionCelular(asignacion);
+        if (celular) await upsertCelular(celular);
+
+        renderCelulares();
+        if (typeof updateDashboard === 'function') updateDashboard();
+        showNotification('✅ Celular devuelto correctamente');
+    } catch(e) {
+        console.error('Error registrando devolución:', e);
+        showNotification('❌ Error al registrar la devolución. Revisa la consola.', 'error');
+    }
 }
 
-}
