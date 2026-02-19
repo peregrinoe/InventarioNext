@@ -35,6 +35,7 @@ async function saveEquipo(event) {
         ultimoMantenimiento:     getVal('equipoUltimoMantenimiento'),
         frecuenciaMantenimiento: getVal('equipoFrecuenciaMantenimiento'),
         condicion:               getVal('equipoCondicion'),
+        ubicacion:               getVal('equipoUbicacion'),
         estado:                  getVal('equipoEstado'),
         observaciones:           getVal('equipoObservaciones'),
         fotos: fotos,
@@ -122,6 +123,13 @@ function renderEquipos() {
             `<img src="${fotos[0]}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">` :
             `<div style="width: 40px; height: 40px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center;">💻</div>`;
         
+        // Ubicación: si está asignado muestra "Lo tiene: nombre", si no, la ubicación manual o "Desconocida"
+        const ubicacionTexto = asignacion && colaborador
+            ? `<span style="display:inline-flex;align-items:center;gap:5px;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:20px;font-size:0.82em;font-weight:600;">👤 Lo tiene: ${colaborador.nombre}</span>`
+            : eq.ubicacion
+                ? `<span style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;color:#475569;padding:4px 10px;border-radius:20px;font-size:0.82em;">📍 ${eq.ubicacion}</span>`
+                : `<span style="display:inline-flex;align-items:center;gap:5px;background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:20px;font-size:0.82em;">❓ Ubicación desconocida</span>`;
+
         return `
             <tr>
                 <td>${eq.modelo}</td>
@@ -132,7 +140,7 @@ function renderEquipos() {
                 <td>${eq.nombreEquipo || '-'}</td>
                 <td><span class="badge ${estadoBadge}">${eq.estado}</span></td>
                 <td>${condicionBadge}</td>
-                <td>${colaborador ? colaborador.nombre : '-'}</td>
+                <td>${ubicacionTexto}</td>
                 <td>${eq.observaciones || '-'}</td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-info" onclick='verDetalleEquipo("${eq._id}")'>👁️ Ver</button>
@@ -682,6 +690,16 @@ function verDetalleEquipo(id) {
                 <span class="badge" style="${categoriaColors[categoria]} color: white; font-size: 1em; padding: 8px 16px;">${categoriaTexto[categoria]}</span>
                 ${propiedadBadge}
                 ${(() => {
+                    // Badge de ubicación en el header
+                    if (asignacionActual && colaboradorActual) {
+                        return `<span style="background:#1e40af;color:white;font-size:1em;padding:8px 16px;border-radius:20px;font-weight:600;">👤 Lo tiene: ${colaboradorActual.nombre}</span>`;
+                    } else if (equipo.ubicacion) {
+                        return `<span style="background:#475569;color:white;font-size:1em;padding:8px 16px;border-radius:20px;font-weight:600;">📍 ${equipo.ubicacion}</span>`;
+                    } else {
+                        return `<span style="background:#f59e0b;color:white;font-size:1em;padding:8px 16px;border-radius:20px;font-weight:600;">❓ Ubicación desconocida</span>`;
+                    }
+                })()}
+                ${(() => {
                     const condColors = { 'Buenas condiciones':'#10b981','Aceptable':'#f59e0b','Malas condiciones':'#ef4444','Baja definitiva':'#991b1b' };
                     const condIcons  = { 'Buenas condiciones':'✅','Aceptable':'🟡','Malas condiciones':'🔴','Baja definitiva':'⛔' };
                     if (!equipo.condicion) return '';
@@ -701,6 +719,22 @@ function verDetalleEquipo(id) {
                 ${equipo.nombreEquipo ? `<p style="margin: 6px 0; color: #475569;"><strong>Nombre:</strong> ${equipo.nombreEquipo}</p>` : ''}
                 ${equipo.fechaCompra ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Compra:</strong> ${new Date(equipo.fechaCompra).toLocaleDateString()}</p>` : ''}
                 <p style="margin: 6px 0; color: #475569;"><strong>Propiedad:</strong> ${propiedad === 'Empresa' ? '🏢 De la empresa' : '👤 Equipo propio del colaborador'}</p>
+                ${(() => {
+                    // Bloque de ubicación dinámico
+                    if (asignacionActual && colaboradorActual) {
+                        return `<p style="margin:8px 0 0 0;color:#475569;"><strong>📍 Ubicación:</strong>
+                            <span style="display:inline-block;margin-left:6px;background:#dbeafe;color:#1e40af;border-radius:20px;padding:3px 12px;font-size:0.85em;font-weight:700;">👤 Lo tiene: ${colaboradorActual.nombre}</span>
+                        </p>`;
+                    } else if (equipo.ubicacion) {
+                        return `<p style="margin:8px 0 0 0;color:#475569;"><strong>📍 Ubicación:</strong>
+                            <span style="display:inline-block;margin-left:6px;background:#f1f5f9;color:#475569;border-radius:20px;padding:3px 12px;font-size:0.85em;font-weight:700;">📍 ${equipo.ubicacion}</span>
+                        </p>`;
+                    } else {
+                        return `<p style="margin:8px 0 0 0;color:#475569;"><strong>📍 Ubicación:</strong>
+                            <span style="display:inline-block;margin-left:6px;background:#fef3c7;color:#92400e;border-radius:20px;padding:3px 12px;font-size:0.85em;font-weight:700;">❓ Ubicación desconocida</span>
+                        </p>`;
+                    }
+                })()}
                 ${equipo.condicion ? (() => {
                     const condColors2 = { 'Buenas condiciones':'#10b981','Aceptable':'#f59e0b','Malas condiciones':'#ef4444','Baja definitiva':'#991b1b' };
                     const condIcons2  = { 'Buenas condiciones':'✅','Aceptable':'🟡','Malas condiciones':'🔴','Baja definitiva':'⛔' };
@@ -788,6 +822,8 @@ function editEquipo(id) {
     document.getElementById('equipoFrecuenciaMantenimiento').value = equipo.frecuenciaMantenimiento || '';
     const condEl = document.getElementById('equipoCondicion');
     if (condEl) condEl.value = equipo.condicion || '';
+    const ubicEl = document.getElementById('equipoUbicacion');
+    if (ubicEl) ubicEl.value = equipo.ubicacion || '';
     document.getElementById('equipoEstado').value = equipo.estado;
     document.getElementById('equipoObservaciones').value = equipo.observaciones || '';
     
