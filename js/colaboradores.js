@@ -279,317 +279,230 @@ function filterColaboradores() {
     });
 }
 
-// NUEVA FUNCIÓN: Descargar carta responsiva
+// ================================
+// CARTA RESPONSIVA — genera PDF con jsPDF
+// Estructura: tabla de equipos + texto legal + 4 bloques de firma
+// ================================
 function descargarCartaResponsiva(colaboradorId) {
     const colaborador = database.colaboradores.find(c => c._id === colaboradorId);
-    if (!colaborador) {
-        showNotification('❌ Colaborador no encontrado', 'error');
-        return;
-    }
-    
-    // Obtener equipos asignados activamente
-    const asignacionesActivas = database.asignaciones.filter(a => 
+    if (!colaborador) { showNotification('❌ Colaborador no encontrado', 'error'); return; }
+
+    const asignacionesActivas = database.asignaciones.filter(a =>
         a.colaboradorId === colaboradorId && a.estado === 'Activa'
     );
-    
     if (asignacionesActivas.length === 0) {
         showNotification('❌ El colaborador no tiene equipos asignados actualmente', 'error');
         return;
     }
-    
-    // Generar HTML de la carta responsiva
-    let equiposHTML = '';
-    asignacionesActivas.forEach((asig, index) => {
-        const equipo = database.equipos.find(e => e._id === asig.equipoId);
-        if (equipo) {
-            equiposHTML += `
-                <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${equipo.tipo}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${equipo.marca} ${equipo.modelo}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${equipo.numSerie}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${formatFechaLocal(asig.fechaAsignacion)}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${equipo.procesador || 'N/A'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${equipo.ram ? equipo.ram + ' GB' : 'N/A'}</td>
-                </tr>
-            `;
-        }
-    });
-    
-    const tipoColaborador = colaborador.esExterno ? 'EXTERNO' : 'INTERNO';
-    const fechaActual = new Date().toLocaleDateString('es-MX', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    const cartaHTML = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carta Responsiva - ${colaborador.nombre}</title>
-    <style>
-        @media print {
-            body { margin: 0; }
-            .no-print { display: none; }
-        }
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 20px;
-        }
-        .header h1 {
-            color: #667eea;
-            margin: 0;
-            font-size: 24px;
-        }
-        .header p {
-            margin: 5px 0;
-            color: #666;
-        }
-        .tipo-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        .tipo-interno {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        .tipo-externo {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .info-section {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 8px;
-        }
-        .info-section h3 {
-            margin-top: 0;
-            color: #1e293b;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 10px;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 15px 0;
-        }
-        .info-item {
-            padding: 8px;
-        }
-        .info-item strong {
-            color: #475569;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        th {
-            background: #667eea;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-        tr:nth-child(even) {
-            background: #f8fafc;
-        }
-        .responsabilidades {
-            margin: 20px 0;
-            padding: 15px;
-            background: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            border-radius: 4px;
-        }
-        .responsabilidades h3 {
-            color: #92400e;
-            margin-top: 0;
-        }
-        .responsabilidades ol {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        .responsabilidades li {
-            margin: 8px 0;
-            color: #78350f;
-        }
-        .firmas {
-            margin-top: 60px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }
-        .firma {
-            text-align: center;
-        }
-        .firma-linea {
-            border-top: 2px solid #000;
-            margin: 60px 20px 10px 20px;
-        }
-        .firma p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #e2e8f0;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 12px;
-        }
-        .btn-imprimir {
-            background: #667eea;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 20px 0;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .btn-imprimir:hover {
-            background: #5568d3;
-        }
-    </style>
-</head>
-<body>
-    <button onclick="window.print()" class="btn-imprimir no-print">🖨️ Imprimir / Guardar PDF</button>
-    
-    <div class="header">
-        <h1>CARTA RESPONSIVA DE EQUIPOS DE CÓMPUTO</h1>
-        <p style="font-weight: bold; margin-top: 15px;">Fecha: ${fechaActual}</p>
-        <span class="tipo-badge ${colaborador.esExterno ? 'tipo-externo' : 'tipo-interno'}">
-            COLABORADOR ${tipoColaborador}
-        </span>
-    </div>
 
-    <div class="info-section">
-        <h3>📋 Información del Colaborador</h3>
-        <div class="info-grid">
-            <div class="info-item">
-                <strong>Nombre:</strong> ${colaborador.nombre}
-            </div>
-            <div class="info-item">
-                <strong>Email:</strong> ${colaborador.email}
-            </div>
-            <div class="info-item">
-                <strong>Departamento:</strong> ${colaborador.departamento}
-            </div>
-            <div class="info-item">
-                <strong>Puesto:</strong> ${colaborador.puesto}
-            </div>
-            ${colaborador.telefono ? `
-            <div class="info-item">
-                <strong>Teléfono:</strong> ${colaborador.telefono}
-            </div>
-            ` : ''}
-            ${colaborador.jefeInmediato ? `
-            <div class="info-item">
-                <strong>Jefe Inmediato:</strong> ${colaborador.jefeInmediato}
-            </div>
-            ` : ''}
-        </div>
-    </div>
+    function _generarPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
 
-    <div class="info-section">
-        <h3>💻 Equipos Asignados</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Tipo</th>
-                    <th>Marca y Modelo</th>
-                    <th>Número de Serie</th>
-                    <th>Fecha Asignación</th>
-                    <th>Procesador</th>
-                    <th>RAM</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${equiposHTML}
-            </tbody>
-        </table>
-    </div>
+        const PW  = 215.9;
+        const PH  = 279.4;
+        const ML  = 20;
+        const MR  = 20;
+        const CW  = PW - ML - MR;
 
-    <div class="responsabilidades">
-        <h3>⚠️ Responsabilidades del Colaborador</h3>
-        <ol>
-            <li>Hacer uso adecuado y responsable del equipo asignado.</li>
-            <li>Mantener el equipo en buen estado y reportar cualquier falla o daño inmediatamente.</li>
-            <li>No realizar modificaciones al hardware o software sin autorización previa.</li>
-            <li>Proteger el equipo contra pérdida, robo o daño.</li>
-            <li>Devolver el equipo en las mismas condiciones en que fue recibido (desgaste normal por uso esperado).</li>
-            <li>En caso de terminación de la relación laboral, devolver el equipo en un máximo de 2 días hábiles.</li>
-            <li>Cumplir con las políticas de seguridad informática de la empresa.</li>
-            <li>No instalar software no autorizado o de procedencia dudosa.</li>
-        </ol>
-    </div>
+        function setFont(style, size, color) {
+            doc.setFont('helvetica', style || 'normal');
+            doc.setFontSize(size || 10);
+            doc.setTextColor(...(color || [0, 0, 0]));
+        }
 
-    <p style="margin: 30px 0; text-align: justify; color: #475569;">
-        Por medio de la presente, yo <strong>${colaborador.nombre}</strong>, 
-        colaborador ${tipoColaborador.toLowerCase()} con puesto de <strong>${colaborador.puesto}</strong> 
-        en el departamento de <strong>${colaborador.departamento}</strong>, manifiesto que he recibido 
-        el(los) equipo(s) de cómputo descrito(s) en la tabla anterior en buenas condiciones de funcionamiento 
-        y me comprometo a hacer uso responsable del mismo, así como a cumplir con todas las responsabilidades 
-        anteriormente descritas.
-    </p>
+        function centeredText(text, y, size, style) {
+            setFont(style || 'normal', size || 10);
+            doc.text(text, PW / 2, y, { align: 'center' });
+        }
 
-    <div class="firmas">
-        <div class="firma">
-            <div class="firma-linea"></div>
-            <p><strong>${colaborador.nombre}</strong></p>
-            <p>Colaborador ${tipoColaborador}</p>
-            <p>${colaborador.puesto}</p>
-        </div>
-        <div class="firma">
-            <div class="firma-linea"></div>
-            <p><strong>Responsable de TI</strong></p>
-            <p>Departamento de Tecnología</p>
-            <p>Firma y Sello</p>
-        </div>
-    </div>
+        function wrappedText(text, x, y, maxW, lineH) {
+            const lines = doc.splitTextToSize(text, maxW);
+            doc.text(lines, x, y);
+            return y + lines.length * lineH;
+        }
 
-    <div class="footer">
-        <p>Este documento es generado automáticamente por el Sistema de Inventario</p>
-        <p>Fecha de generación: ${new Date().toLocaleString('es-MX')}</p>
-        <p>Total de equipos asignados: ${asignacionesActivas.length}</p>
-    </div>
-</body>
-</html>
-    `;
-    
-    // Crear ventana nueva con la carta
-    const ventana = window.open('', '_blank');
-    ventana.document.write(cartaHTML);
-    ventana.document.close();
-    
-    showNotification('✅ Carta responsiva generada. Puedes imprimirla o guardarla como PDF.', 'success');
+        // ── Título ─────────────────────────────────────────────────────────
+        let y = 18;
+        centeredText('CARTA RESPONSIVA DE EQUIPO', y, 13, 'bold');
+        y += 12;
+
+        // ── Párrafo introductorio ──────────────────────────────────────────
+        setFont('normal', 10);
+        const fechaAsig = asignacionesActivas[0] && asignacionesActivas[0].fechaAsignacion
+            ? new Date(asignacionesActivas[0].fechaAsignacion).toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'})
+            : new Date().toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'});
+        y = wrappedText('Recibí del área de sistemas el equipo de cómputo que se menciona a continuación;', ML, y, CW, 5);
+        y += 4;
+
+        // ── Tabla de equipos ───────────────────────────────────────────────
+        // Recopilar también celulares asignados activos
+        const asignacionesCelActivas = (database.asignacionesCelulares || []).filter(a =>
+            a.colaboradorId === colaboradorId && a.estado === 'Activa'
+        );
+
+        const cols = [
+            { label: 'DISPOSITIVO',     w: CW * 0.22 },
+            { label: 'MARCA',           w: CW * 0.20 },
+            { label: 'MODELO',          w: CW * 0.28 },
+            { label: 'NUMERO DE SERIE', w: CW * 0.30 },
+        ];
+        const rowH  = 9;
+        const headH = 10;
+
+        // ── Función auxiliar para dibujar una fila de tabla ──────────────
+        function drawTableRow(yPos, valores, bgColor) {
+            let cx2 = ML;
+            // Primero dibujamos TODOS los rectángulos
+            cols.forEach(col => {
+                doc.setFillColor(...bgColor);
+                doc.setDrawColor(0, 0, 0);
+                doc.rect(cx2, yPos, col.w, rowH, 'FD');
+                cx2 += col.w;
+            });
+            // Luego escribimos TODOS los textos (después de setear color de texto)
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            cx2 = ML;
+            cols.forEach((col, ci) => {
+                if (valores[ci]) {
+                    const cell = doc.splitTextToSize(String(valores[ci]), col.w - 3);
+                    doc.text(cell, cx2 + col.w / 2, yPos + 5.5, { align: 'center' });
+                }
+                cx2 += col.w;
+            });
+        }
+
+        // ── Cabecera: dibujar rects primero, texto después ───────────────
+        let cx = ML;
+        doc.setFillColor(180, 198, 231);
+        doc.setDrawColor(0, 0, 0);
+        cols.forEach(col => {
+            doc.rect(cx, y, col.w, headH, 'FD');
+            cx += col.w;
+        });
+        // Texto de cabecera después de dibujar todos los rects
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        cx = ML;
+        cols.forEach(col => {
+            const lines = doc.splitTextToSize(col.label, col.w - 2);
+            const textH = lines.length * 3.5;
+            doc.text(lines, cx + col.w / 2, y + (headH - textH) / 2 + 3.5, { align: 'center' });
+            cx += col.w;
+        });
+        y += headH;
+
+        // ── Filas de equipos ─────────────────────────────────────────────
+        let filaIdx = 0;
+        asignacionesActivas.forEach(asig => {
+            const eq = database.equipos.find(e => e._id === asig.equipoId);
+            if (!eq) return;
+            const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
+            drawTableRow(y, [eq.tipo || '', eq.marca || '', eq.modelo || '', eq.numSerie || ''], bg);
+            y += rowH;
+            filaIdx++;
+        });
+
+        // ── Filas de celulares ───────────────────────────────────────────
+        asignacionesCelActivas.forEach(asig => {
+            const cel = database.celulares.find(c => c._id === asig.celularId);
+            if (!cel) return;
+            const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
+            const tipo = 'Celular' + (cel.numero ? ' (' + cel.numero + ')' : '');
+            drawTableRow(y, [tipo, cel.marca || '', cel.modelo || '', cel.imei || cel.numSerie || ''], bg);
+            y += rowH;
+            filaIdx++;
+        });
+
+        // ── Filas vacías para llegar a mínimo 3 ─────────────────────────
+        const filasMin = 3;
+        while (filaIdx < filasMin) {
+            const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
+            drawTableRow(y, ['','','',''], bg);
+            y += rowH;
+            filaIdx++;
+        }
+        y += 9;
+
+        // ── Texto legal ────────────────────────────────────────────────────
+        setFont('normal', 9, [0, 0, 0]);
+        y = wrappedText(
+            'El cual pertenece a la empresa BYTETEK S.A. DE C.V. a partir del día ' + fechaAsig + '. Me comprometo a cuidar, mantener en buen estado y utilizarlos única y exclusivamente para asuntos relacionados con mi actividad laboral.',
+            ML, y, CW, 5
+        );
+        y += 6;
+
+        y = wrappedText(
+            'Asimismo, no podré modificar la configuración del equipo ni instalar software sin ser previamente autorizado.',
+            ML, y, CW, 5
+        );
+        y += 6;
+
+        y = wrappedText(
+            'En caso de su extravío, daño o uso inadecuado, me responsabilizo a pagar el costo de la reposición de equipo.',
+            ML, y, CW, 5
+        );
+        y += 14;
+
+        // ── Bloques de firma 2×2 ───────────────────────────────────────────
+        const firmas    = ['SISTEMAS', 'COLABORADOR', 'CEO', 'JEFE INMEDIATO'];
+        const ceoCandidato = database.colaboradores.find(c => (c.puesto || '').toLowerCase().includes('ceo'));
+        const ceoNombre = ceoCandidato ? ceoCandidato.nombre : '';
+        const subNombres= ['', colaborador.nombre, ceoNombre, colaborador.jefeInmediato || ''];
+        const bW  = CW / 2 - 5;
+        const bH  = 40;
+        const gap = 10;
+
+        [[0,1],[2,3]].forEach(([li, ri], rowIdx) => {
+            const bY = y + rowIdx * (bH + 8);
+            [li, ri].forEach((fi, ci) => {
+                const bX = ML + ci * (bW + gap);
+                doc.setDrawColor(0);
+                doc.setFillColor(255,255,255);
+                doc.rect(bX, bY, bW, bH);
+
+                // Línea de firma
+                const lineY = bY + bH - 14;
+                doc.setDrawColor(80,80,80);
+                doc.line(bX + 10, lineY, bX + bW - 10, lineY);
+
+                // Etiqueta subrayada en negrita
+                setFont('bold', 9, [0,0,0]);
+                doc.text(firmas[fi], bX + bW / 2, bY + bH - 7, { align: 'center' });
+
+                // Nombre del colaborador (si aplica)
+                if (subNombres[fi]) {
+                    setFont('normal', 7, [80,80,80]);
+                    const lines = doc.splitTextToSize(subNombres[fi], bW - 6);
+                    doc.text(lines, bX + bW / 2, bY + bH - 2, { align: 'center' });
+                }
+            });
+        });
+
+        // ── Pie de página ──────────────────────────────────────────────────
+        setFont('normal', 7, [150,150,150]);
+        doc.text(
+            'Generado: ' + new Date().toLocaleString('es-MX') + ' · Sistema de Inventario BYTETEK',
+            PW / 2, PH - 10, { align: 'center' }
+        );
+
+        const nombreArchivo = 'CartaResponsiva_' + colaborador.nombre.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf';
+        doc.save(nombreArchivo);
+        showNotification('✅ Carta responsiva descargada como PDF', 'success');
+    }
+
+    if (window.jspdf) {
+        _generarPDF();
+    } else {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.onload = _generarPDF;
+        script.onerror = () => showNotification('❌ No se pudo cargar la librería de PDF', 'error');
+        document.head.appendChild(script);
+    }
 }
 
 function verDetalleColaborador(id) {
