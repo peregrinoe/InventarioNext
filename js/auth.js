@@ -153,7 +153,7 @@ function applyRoleRestrictions() {
         style.textContent = `
             .btn-primary:not(.allow-operador),
             .btn-danger,
-            .btn-warning:not(.allow-operador),
+            .btn-warning:not(.allow-operador):not(.carta-responsiva),
             .btn-success:not(.allow-operador),
             .backup-controls .btn-info { display: none !important; }
 
@@ -209,6 +209,7 @@ function patchModalsForOperador() {
         'saveAsignacion',    'saveLicencia', 'saveAsignacionCelular',
         'guardarAsignacionesLicencia', 'guardarCitaMantenimiento',
         'confirmarMantenimientoCompletado'
+        // descargarCartaResponsiva NO está bloqueada — el operador puede descargar PDFs
     ].forEach(blockFn);
 }
 

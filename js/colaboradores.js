@@ -165,7 +165,7 @@ function renderColaboradores() {
                 <td><span class="badge badge-info">${equiposAsignados} equipo(s)</span></td>
                 <td><span class="badge badge-success">${licenciasAsignadas} licencia(s)</span></td>
                 <td class="action-buttons">
-                    ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
+                    ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
                     <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
                     <button class="btn btn-sm btn-primary" onclick='editColaborador("${col._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteColaborador("${col._id}")'>🗑️</button>
@@ -342,10 +342,11 @@ function descargarCartaResponsiva(colaboradorId) {
         );
 
         const cols = [
-            { label: 'DISPOSITIVO',     w: CW * 0.22 },
-            { label: 'MARCA',           w: CW * 0.20 },
-            { label: 'MODELO',          w: CW * 0.28 },
-            { label: 'NUMERO DE SERIE', w: CW * 0.30 },
+            { label: 'DISPOSITIVO',        w: CW * 0.18 },
+            { label: 'MARCA',              w: CW * 0.16 },
+            { label: 'MODELO',             w: CW * 0.22 },
+            { label: 'NUMERO DE SERIE',    w: CW * 0.24 },
+            { label: 'FECHA ASIGNACION',   w: CW * 0.20 },
         ];
         const rowH  = 9;
         const headH = 10;
@@ -401,7 +402,10 @@ function descargarCartaResponsiva(colaboradorId) {
             const eq = database.equipos.find(e => e._id === asig.equipoId);
             if (!eq) return;
             const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
-            drawTableRow(y, [eq.tipo || '', eq.marca || '', eq.modelo || '', eq.numSerie || ''], bg);
+            const fechaEq = asig.fechaAsignacion
+                ? new Date(asig.fechaAsignacion).toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'})
+                : '';
+            drawTableRow(y, [eq.tipo || '', eq.marca || '', eq.modelo || '', eq.numSerie || '', fechaEq], bg);
             y += rowH;
             filaIdx++;
         });
@@ -412,7 +416,10 @@ function descargarCartaResponsiva(colaboradorId) {
             if (!cel) return;
             const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
             const tipo = 'Celular' + (cel.numero ? ' (' + cel.numero + ')' : '');
-            drawTableRow(y, [tipo, cel.marca || '', cel.modelo || '', cel.imei || cel.numSerie || ''], bg);
+            const fechaCel = asig.fechaAsignacion
+                ? new Date(asig.fechaAsignacion).toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'})
+                : '';
+            drawTableRow(y, [tipo, cel.marca || '', cel.modelo || '', cel.imei || cel.numSerie || '', fechaCel], bg);
             y += rowH;
             filaIdx++;
         });
@@ -421,7 +428,7 @@ function descargarCartaResponsiva(colaboradorId) {
         const filasMin = 3;
         while (filaIdx < filasMin) {
             const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
-            drawTableRow(y, ['','','',''], bg);
+            drawTableRow(y, ['','','','',''], bg);
             y += rowH;
             filaIdx++;
         }
@@ -665,7 +672,7 @@ function verDetalleColaborador(id) {
         
         ${asignacionesActivas.length > 0 ? `
             <div style="margin-bottom: 20px; text-align: center;">
-                <button class="btn btn-warning" onclick='descargarCartaResponsiva("${id}")' style="padding: 12px 30px; font-size: 16px;">
+                <button class="btn btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${id}")' style="padding: 12px 30px; font-size: 16px;">
                     📄 Descargar Carta Responsiva
                 </button>
             </div>
