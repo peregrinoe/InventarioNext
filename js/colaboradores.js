@@ -607,7 +607,16 @@ function verDetalleColaborador(id) {
     const licenciasAsignacionesCol = database.licenciasAsignaciones.filter(la => 
         la.colaboradorId === id
     );
-    
+
+    // ── Celulares asignados actualmente ────────────────────────────────────
+    const asignacionesCelularesActivas = (database.asignacionesCelulares || []).filter(a =>
+        a.colaboradorId === id && a.estado === 'Activa'
+    );
+
+    const historialCelulares = (database.asignacionesCelulares || [])
+        .filter(a => a.colaboradorId === id)
+        .sort((a, b) => new Date(b.fechaAsignacion) - new Date(a.fechaAsignacion));
+
     const equiposHTML = asignacionesActivas.map(asig => {
         const equipo = database.equipos.find(e => e._id === asig.equipoId);
         if (!equipo) return '';
@@ -675,6 +684,34 @@ function verDetalleColaborador(id) {
         `;
     }).join('') : '<p style="color: #94a3b8; text-align: center; padding: 20px;">Sin licencias asignadas</p>';
     
+
+    // ── Renderizar celulares activos ────────────────────────────────────────
+    const celularesActivosHTML = asignacionesCelularesActivas.map(asig => {
+        const celular = database.celulares.find(c => c._id === asig.celularId);
+        if (!celular) return '';
+
+        const fotos = celular.fotos || (celular.foto ? [celular.foto] : []);
+        const fotoCelular = fotos.length > 0
+            ? '<img src="' + fotos[0] + '" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover;">'
+            : '<div style="width: 80px; height: 80px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 2em;">📱</div>';
+
+        const numHtml      = celular.numero   ? '<p style="margin: 4px 0; color: #64748b;"><strong>Número:</strong> '   + celular.numero   + '</p>' : '';
+        const imeiHtml     = celular.imei      ? '<p style="margin: 4px 0; color: #64748b;"><strong>IMEI:</strong> '      + celular.imei      + '</p>' : '';
+        const companiaHtml = celular.compania  ? '<p style="margin: 4px 0; color: #64748b;"><strong>Compañía:</strong> ' + celular.compania  + '</p>' : '';
+        const planHtml     = celular.plan       ? '<p style="margin: 4px 0; color: #64748b;"><strong>Plan:</strong> '      + celular.plan       + '</p>' : '';
+
+        return [
+            '<div style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 15px; background: #f8fafc;">',
+            '  <div style="display: flex; gap: 15px; align-items: start;">',
+            fotoCelular,
+            '  <div style="flex: 1;">',
+            '    <h4 style="margin: 0 0 8px 0; color: #1e293b;">' + celular.marca + ' ' + celular.modelo + '</h4>',
+            numHtml, imeiHtml, companiaHtml, planHtml,
+            '    <p style="margin: 4px 0; color: #64748b;"><strong>Asignado:</strong> ' + formatFechaLocal(asig.fechaAsignacion) + '</p>',
+            '  </div></div></div>'
+        ].join('');
+    }).join('') || '<p style="color: #94a3b8; text-align: center; padding: 20px;">Sin celulares asignados actualmente</p>';
+
     const fotoColaborador = colaborador.foto ? 
         `<img src="${colaborador.foto}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">` :
         `<div style="width: 120px; height: 120px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: bold; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">${colaborador.nombre.charAt(0)}</div>`;
@@ -708,6 +745,7 @@ function verDetalleColaborador(id) {
                 <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">📊 Estadísticas</h3>
                 <p style="margin: 6px 0; color: #475569;"><strong>Equipos Asignados:</strong> ${asignacionesActivas.length}</p>
                 <p style="margin: 6px 0; color: #475569;"><strong>Licencias:</strong> ${licenciasAsignacionesCol.length}</p>
+                <p style="margin: 6px 0; color: #475569;"><strong>Celulares Asignados:</strong> ${asignacionesCelularesActivas.length}</p>
                 ${colaborador.fechaIngreso ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Ingreso:</strong> ${formatFechaLocal(colaborador.fechaIngreso)}</p>` : ''}
             </div>
         </div>
@@ -725,6 +763,14 @@ function verDetalleColaborador(id) {
         </div>
         <div style="display: grid; gap: 12px;">
             ${equiposHTML || '<p style="color: #94a3b8; text-align: center; padding: 20px;">Sin equipos asignados actualmente</p>'}
+        </div>
+        
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+            <h3 style="margin: 0; color: #1e293b;">📱 Celulares Asignados Actualmente</h3>
+        </div>
+        <div style="display: grid; gap: 12px; margin-bottom: 10px;">
+            ${celularesActivosHTML}
         </div>
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
