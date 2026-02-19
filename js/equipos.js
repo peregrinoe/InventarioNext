@@ -64,13 +64,43 @@ async function saveEquipo(event) {
     }
 }
 
+function filterEquipos() {
+    renderEquipos();
+}
+
 function renderEquipos() {
     const tbody = document.getElementById('equiposTableBody');
-    
+
+    // ── Leer filtros activos ────────────────────────────────────────────────
+    const searchTerm     = (document.getElementById('searchEquipo')?.value   || '').toLowerCase().trim();
+    const filterEstado   =  document.getElementById('filterEstado')?.value   || '';
+    const filterCategoria=  document.getElementById('filterCategoria')?.value|| '';
+    const filterPropiedad=  document.getElementById('filterPropiedad')?.value|| '';
+
+    // ── Filtrar sobre los datos ─────────────────────────────────────────────
+    let equiposFiltrados = database.equipos.filter(eq => {
+        // Búsqueda de texto: modelo, marca, num serie, nombre, id interno, observaciones
+        const hayBusqueda = !searchTerm || [
+            eq.modelo, eq.marca, eq.numSerie, eq.nombreEquipo,
+            eq.idInterno, eq.observaciones, eq.procesador, eq.ubicacion
+        ].some(v => (v || '').toLowerCase().includes(searchTerm));
+
+        // Estado
+        const hayEstado = !filterEstado || eq.estado === filterEstado;
+
+        // Categoría
+        const hayCategoria = !filterCategoria || eq.categoria === filterCategoria;
+
+        // Propiedad
+        const hayPropiedad = !filterPropiedad || eq.propiedad === filterPropiedad;
+
+        return hayBusqueda && hayEstado && hayCategoria && hayPropiedad;
+    });
+
     if (database.equipos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="13" class="empty-state">
+                <td colspan="11" class="empty-state">
                     <div class="empty-state-icon">💻</div>
                     <h3>No hay equipos registrados</h3>
                     <p>Haz clic en "Nuevo Equipo" para comenzar</p>
@@ -79,13 +109,27 @@ function renderEquipos() {
         `;
         return;
     }
+
+    if (equiposFiltrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <h3>Sin resultados</h3>
+                    <p>No se encontraron equipos con los filtros aplicados</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
     
-    tbody.innerHTML = database.equipos.map(eq => {
+    tbody.innerHTML = equiposFiltrados.map(eq => {
         const asignacion = database.asignaciones.find(a => 
             a.equipoId === eq._id && a.estado === 'Activa'
         );
         const colaborador = asignacion ? 
             database.colaboradores.find(c => c._id === asignacion.colaboradorId) : null;
+        
         
         const estadoBadge = eq.estado === 'Disponible' ? 'badge-success' : 
                           eq.estado === 'Asignado' ? 'badge-info' : 
@@ -877,46 +921,3 @@ async function deleteEquipo(id) {
         }
     }
 }
-
-function filterEquipos() {
-    const searchTerm = document.getElementById('searchEquipo').value.toLowerCase();
-    const filterEstado = document.getElementById('filterEstado').value;
-    const filterCategoria = document.getElementById('filterCategoria').value;
-    const filterPropiedad = document.getElementById('filterPropiedad').value;
-    const rows = document.querySelectorAll('#equiposTableBody tr');
-    
-    rows.forEach(row => {
-        // Si es la fila de "empty state", no filtrar
-        if (row.querySelector('.empty-state')) {
-            return;
-        }
-        
-        const text = row.textContent.toLowerCase();
-        const cells = row.querySelectorAll('td');
-        
-        // Obtener valores de las celdas
-        const estado = cells[8]?.textContent || '';
-        const categoriaCell = cells[4]?.textContent || '';
-        const propiedadCell = cells[5]?.textContent || '';
-        
-        // Extraer número de categoría del texto
-        let categoriaNum = '';
-        if (categoriaCell.includes('Cat. 1')) categoriaNum = '1';
-        else if (categoriaCell.includes('Cat. 2')) categoriaNum = '2';
-        else if (categoriaCell.includes('Cat. 3')) categoriaNum = '3';
-        
-        // Determinar propiedad
-        let propiedadValue = '';
-        if (propiedadCell.includes('Empresa')) propiedadValue = 'Empresa';
-        else if (propiedadCell.includes('Propio')) propiedadValue = 'Propio';
-        
-        // Aplicar filtros
-        const matchesSearch = text.includes(searchTerm);
-        const matchesEstado = !filterEstado || estado.includes(filterEstado);
-        const matchesCategoria = !filterCategoria || categoriaNum === filterCategoria;
-        const matchesPropiedad = !filterPropiedad || propiedadValue === filterPropiedad;
-        
-        row.style.display = (matchesSearch && matchesEstado && matchesCategoria && matchesPropiedad) ? '' : 'none';
-    });
-}
-
