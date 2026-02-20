@@ -307,7 +307,7 @@ function descargarCartaResponsiva(colaboradorId) {
 
         function setFont(style, size, color) {
             doc.setFont('helvetica', style || 'normal');
-            doc.setFontSize(size || 10);
+            doc.setFontSize(size || 12);
             doc.setTextColor(...(color || [0, 0, 0]));
         }
 
@@ -324,11 +324,11 @@ function descargarCartaResponsiva(colaboradorId) {
 
         // ── Título ─────────────────────────────────────────────────────────
         let y = 18;
-        centeredText('CARTA RESPONSIVA DE EQUIPO', y, 13, 'bold');
+        centeredText('CARTA RESPONSIVA DE EQUIPO', y, 16, 'bold');
         y += 12;
 
         // ── Párrafo introductorio ──────────────────────────────────────────
-        setFont('normal', 10);
+        setFont('normal', 12);
         const fechaAsig = asignacionesActivas[0] && asignacionesActivas[0].fechaAsignacion
             ? new Date(asignacionesActivas[0].fechaAsignacion).toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'})
             : new Date().toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'});
@@ -435,7 +435,7 @@ function descargarCartaResponsiva(colaboradorId) {
         y += 9;
 
         // ── Texto legal ────────────────────────────────────────────────────
-        setFont('normal', 9, [0, 0, 0]);
+        setFont('normal', 12, [0, 0, 0]);
         y = wrappedText(
             'El cual pertenece a la empresa BYTETEK S.A. DE C.V. a partir del día ' + fechaAsig + '. Me comprometo a cuidar, mantener en buen estado y utilizarlos única y exclusivamente para asuntos relacionados con mi actividad laboral.',
             ML, y, CW, 5
@@ -456,9 +456,26 @@ function descargarCartaResponsiva(colaboradorId) {
 
         // ── Bloques de firma 2×2 ───────────────────────────────────────────
         const firmas    = ['SISTEMAS', 'COLABORADOR', 'CEO', 'JEFE INMEDIATO'];
-        const ceoCandidato = database.colaboradores.find(c => (c.puesto || '').toLowerCase().includes('ceo'));
-        const ceoNombre = ceoCandidato ? ceoCandidato.nombre : '';
-        const subNombres= ['', colaborador.nombre, ceoNombre, colaborador.jefeInmediato || ''];
+        // Remover acentos para que helvetica de jsPDF renderice correctamente
+        function sanitizeText(str) {
+            if (!str) return '';
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+        }
+
+        // Buscar CEO por departamento === 'CEO' (campo especifico en Supabase)
+        const ceoCandidato = database.colaboradores.find(c =>
+            (c.departamento || '').trim().toUpperCase() === 'CEO'
+        );
+        const ceoNombre = sanitizeText(ceoCandidato ? ceoCandidato.nombre : '');
+
+        // Buscar jefe inmediato como colaborador en BD
+        const jefeTexto = colaborador.jefeInmediato || '';
+        const jefeCandidato = database.colaboradores.find(c =>
+            c.nombre && c.nombre.trim().toLowerCase() === jefeTexto.trim().toLowerCase()
+        );
+        const jefeNombre = sanitizeText(jefeCandidato ? jefeCandidato.nombre : jefeTexto);
+
+        const subNombres = ['', sanitizeText(colaborador.nombre), ceoNombre, jefeNombre];
         const bW  = CW / 2 - 5;
         const bH  = 40;
         const gap = 10;
