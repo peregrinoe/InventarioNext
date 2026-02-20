@@ -136,6 +136,7 @@ function mapColaborador(row) {
         jefeInmediato: row.jefe_inmediato,
         esExterno: row.es_externo,
         foto: row.foto,
+        cartaEstado: row.carta_estado || 'pendiente',
         createdAt: row.created_at
     };
 }

@@ -79,7 +79,7 @@ function renderColaboradores() {
     if (database.colaboradores.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="empty-state">
+                <td colspan="10" class="empty-state">
                     <div class="empty-state-icon">👥</div>
                     <h3>No hay colaboradores registrados</h3>
                     <p>Haz clic en "Nuevo Colaborador" para comenzar</p>
@@ -164,6 +164,14 @@ function renderColaboradores() {
                 <td>${tipoBadge}</td>
                 <td><span class="badge badge-info">${equiposAsignados} equipo(s)</span></td>
                 <td><span class="badge badge-success">${licenciasAsignadas} licencia(s)</span></td>
+                <td>
+                    ${equiposAsignados > 0
+                        ? col.cartaEstado === 'completa'
+                            ? '<span class="badge badge-success">✅ Completa</span>'
+                            : '<span class="badge badge-warning">⏳ Pendiente</span>'
+                        : '<span style="color:#cbd5e0;">—</span>'
+                    }
+                </td>
                 <td class="action-buttons">
                     ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
                     <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
@@ -283,6 +291,53 @@ function filterColaboradores() {
 // CARTA RESPONSIVA — genera PDF con jsPDF
 // Estructura: tabla de equipos + texto legal + 4 bloques de firma
 // ================================
+// ── TOGGLE ESTADO CARTA RESPONSIVA ──────────────────────────────────────────
+async function toggleCartaEstado(colaboradorId) {
+    const colaborador = database.colaboradores.find(c => c._id === colaboradorId);
+    if (!colaborador) return;
+
+    const nuevoEstado = colaborador.cartaEstado === 'completa' ? 'pendiente' : 'completa';
+
+    const { error } = await supabaseClient
+        .from('colaboradores')
+        .update({ carta_estado: nuevoEstado })
+        .eq('id', colaboradorId);
+
+    if (error) {
+        console.error('Error actualizando carta_estado:', error);
+        showNotification('❌ Error al actualizar el estado', 'error');
+        return;
+    }
+
+    // Actualizar memoria local
+    colaborador.cartaEstado = nuevoEstado;
+
+    // Actualizar badge e botón en el panel sin cerrar el modal
+    const badge = document.getElementById('cartaEstadoBadge_' + colaboradorId);
+    const btn   = document.getElementById('cartaToggleBtn_'   + colaboradorId);
+
+    if (badge) {
+        badge.className = 'badge ' + (nuevoEstado === 'completa' ? 'badge-success' : 'badge-warning');
+        badge.textContent = nuevoEstado === 'completa' ? '✅ Completa' : '⏳ Pendiente';
+    }
+    if (btn) {
+        btn.className = 'btn allow-operador ' + (nuevoEstado === 'completa' ? 'btn-warning' : 'btn-success');
+        btn.textContent = nuevoEstado === 'completa' ? '↩️ Marcar como Pendiente' : '✅ Marcar como Completa';
+    }
+
+    // Actualizar el ícono/texto del estado
+    const estadoDiv = btn ? btn.closest('div').previousElementSibling : null;
+    if (estadoDiv) {
+        const emojiSpan = estadoDiv.querySelector('span:first-child');
+        const descSpan  = estadoDiv.querySelectorAll('div')[1];
+        if (emojiSpan) emojiSpan.textContent = nuevoEstado === 'completa' ? '✅' : '⏳';
+        if (descSpan)  descSpan.textContent  = nuevoEstado === 'completa' ? 'Carta firmada y entregada' : 'Pendiente de firma física';
+    }
+
+    showNotification(nuevoEstado === 'completa' ? '✅ Carta marcada como Completa' : '⏳ Carta marcada como Pendiente', 'success');
+    renderColaboradores(); // refrescar badge en la tabla
+}
+
 function descargarCartaResponsiva(colaboradorId) {
     const colaborador = database.colaboradores.find(c => c._id === colaboradorId);
     if (!colaborador) { showNotification('❌ Colaborador no encontrado', 'error'); return; }
@@ -307,7 +362,7 @@ function descargarCartaResponsiva(colaboradorId) {
 
         function setFont(style, size, color) {
             doc.setFont('helvetica', style || 'normal');
-            doc.setFontSize(size || 12);
+            doc.setFontSize(size || 10);
             doc.setTextColor(...(color || [0, 0, 0]));
         }
 
@@ -455,53 +510,55 @@ function descargarCartaResponsiva(colaboradorId) {
         y += 14;
 
         // ── Bloques de firma 2×2 ───────────────────────────────────────────
-        const firmas    = ['SISTEMAS', 'COLABORADOR', 'CEO', 'JEFE INMEDIATO'];
-        // Remover acentos para que helvetica de jsPDF renderice correctamente
+
+        // Sanitizar texto para helvetica (quita acentos y chars no-ASCII)
         function sanitizeText(str) {
             if (!str) return '';
             return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
         }
 
-        // Buscar CEO por departamento === 'CEO' (campo especifico en Supabase)
+        // CEO por departamento === 'CEO' (campo en Supabase)
         const ceoCandidato = database.colaboradores.find(c =>
             (c.departamento || '').trim().toUpperCase() === 'CEO'
         );
         const ceoNombre = sanitizeText(ceoCandidato ? ceoCandidato.nombre : '');
 
-        // Buscar jefe inmediato como colaborador en BD
+        // Jefe inmediato: buscar en BD primero para sanitizar bien
         const jefeTexto = colaborador.jefeInmediato || '';
         const jefeCandidato = database.colaboradores.find(c =>
             c.nombre && c.nombre.trim().toLowerCase() === jefeTexto.trim().toLowerCase()
         );
         const jefeNombre = sanitizeText(jefeCandidato ? jefeCandidato.nombre : jefeTexto);
 
+        const firmas     = ['SISTEMAS', 'COLABORADOR', 'CEO', 'JEFE INMEDIATO'];
         const subNombres = ['', sanitizeText(colaborador.nombre), ceoNombre, jefeNombre];
+
         const bW  = CW / 2 - 5;
-        const bH  = 40;
+        const bH  = 50;          // más alto para que los textos respiren
         const gap = 10;
 
         [[0,1],[2,3]].forEach(([li, ri], rowIdx) => {
-            const bY = y + rowIdx * (bH + 8);
+            const bY = y + rowIdx * (bH + 5);
             [li, ri].forEach((fi, ci) => {
                 const bX = ML + ci * (bW + gap);
                 doc.setDrawColor(0);
                 doc.setFillColor(255,255,255);
                 doc.rect(bX, bY, bW, bH);
 
-                // Línea de firma
-                const lineY = bY + bH - 14;
+                // Línea de firma centrada verticalmente
+                const lineY = bY + bH - 18;
                 doc.setDrawColor(80,80,80);
                 doc.line(bX + 10, lineY, bX + bW - 10, lineY);
 
-                // Etiqueta subrayada en negrita
-                setFont('bold', 9, [0,0,0]);
-                doc.text(firmas[fi], bX + bW / 2, bY + bH - 7, { align: 'center' });
+                // Etiqueta en negrita — tamaño 11
+                setFont('bold', 10, [0,0,0]);
+                doc.text(firmas[fi], bX + bW / 2, bY + bH - 10, { align: 'center' });
 
-                // Nombre del colaborador (si aplica)
+                // Nombre debajo — tamaño 9
                 if (subNombres[fi]) {
-                    setFont('normal', 7, [80,80,80]);
-                    const lines = doc.splitTextToSize(subNombres[fi], bW - 6);
-                    doc.text(lines, bX + bW / 2, bY + bH - 2, { align: 'center' });
+                    setFont('normal', 8, [80,80,80]);
+                    const lines = doc.splitTextToSize(subNombres[fi], bW - 8);
+                    doc.text(lines, bX + bW / 2, bY + bH - 3, { align: 'center' });
                 }
             });
         });
@@ -688,9 +745,29 @@ function verDetalleColaborador(id) {
         </div>
         
         ${asignacionesActivas.length > 0 ? `
-            <div style="margin-bottom: 20px; text-align: center;">
+            <div style="margin-bottom: 16px; text-align: center;">
                 <button class="btn btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${id}")' style="padding: 12px 30px; font-size: 16px;">
                     📄 Descargar Carta Responsiva
+                </button>
+            </div>
+            <div style="background:#f8fafc; border:2px solid #e2e8f0; border-radius:12px; padding:20px; margin-bottom:25px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.4em;">${colaborador.cartaEstado === 'completa' ? '✅' : '⏳'}</span>
+                    <div>
+                        <div style="font-weight:700; color:#1e293b; font-size:1em;">Estado de Carta Responsiva</div>
+                        <div style="color:#64748b; font-size:0.88em;">
+                            ${colaborador.cartaEstado === 'completa' ? 'Carta firmada y entregada' : 'Pendiente de firma física'}
+                        </div>
+                    </div>
+                    <span id="cartaEstadoBadge_${id}" class="badge ${colaborador.cartaEstado === 'completa' ? 'badge-success' : 'badge-warning'}" style="font-size:0.95em;">
+                        ${colaborador.cartaEstado === 'completa' ? '✅ Completa' : '⏳ Pendiente'}
+                    </span>
+                </div>
+                <button class="btn allow-operador ${colaborador.cartaEstado === 'completa' ? 'btn-warning' : 'btn-success'}"
+                    id="cartaToggleBtn_${id}"
+                    onclick='toggleCartaEstado("${id}")'
+                    style="padding:10px 22px; font-size:0.95em;">
+                    ${colaborador.cartaEstado === 'completa' ? '↩️ Marcar como Pendiente' : '✅ Marcar como Completa'}
                 </button>
             </div>
         ` : ''}
