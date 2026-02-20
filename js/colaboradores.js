@@ -36,6 +36,7 @@ async function saveColaborador(event) {
         fechaIngreso: document.getElementById('colaboradorFechaIngreso').value,
         jefeInmediato: document.getElementById('colaboradorJefeInmediato').value,
         esExterno: document.getElementById('colaboradorEsExterno')?.checked || false, // NUEVO CAMPO
+        esActivo: document.getElementById('colaboradorEsActivo') ? document.getElementById('colaboradorEsActivo').checked : true,
         foto: document.getElementById('colaboradorFoto').value || '',
         createdAt: id ? (database.colaboradores.find(c => c._id === id) || {}).createdAt || new Date().toISOString() : new Date().toISOString()
     };
@@ -79,7 +80,7 @@ function renderColaboradores() {
     if (database.colaboradores.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-state">
+                <td colspan="11" class="empty-state">
                     <div class="empty-state-icon">👥</div>
                     <h3>No hay colaboradores registrados</h3>
                     <p>Haz clic en "Nuevo Colaborador" para comenzar</p>
@@ -153,15 +154,22 @@ function renderColaboradores() {
         const tipoBadge = col.esExterno ? 
             '<span class="badge badge-warning">Externo</span>' : 
             '<span class="badge badge-info">Interno</span>';
+
+        // Badge para estatus activo/inactivo
+        const esActivo = col.esActivo !== false; // true por defecto
+        const estatusBadge = esActivo
+            ? '<span class="badge badge-success">🟢 Activo</span>'
+            : '<span class="badge badge-danger">🔴 Inactivo</span>';
         
         return `
-            <tr>
+            <tr style="${esActivo ? '' : 'opacity:0.6;background:#fafafa;'}">
                 <td>${fotoHTML}</td>
                 <td><strong>${col.nombre}</strong></td>
                 <td>${col.email}</td>
                 <td>${col.departamento}</td>
                 <td>${col.puesto}</td>
                 <td>${tipoBadge}</td>
+                <td>${estatusBadge}</td>
                 <td><span class="badge badge-info">${equiposAsignados} equipo(s)</span></td>
                 <td><span class="badge badge-success">${licenciasAsignadas} licencia(s)</span></td>
                 <td>
@@ -225,6 +233,12 @@ function editColaborador(id) {
     if (checkboxExterno) {
         checkboxExterno.checked = colaborador.esExterno || false;
     }
+
+    // NUEVO: Establecer checkbox de activo
+    const checkboxActivo = document.getElementById('colaboradorEsActivo');
+    if (checkboxActivo) {
+        checkboxActivo.checked = colaborador.esActivo !== false; // true por defecto
+    }
     
     if (colaborador.foto) {
         document.getElementById('colaboradorFoto').value = colaborador.foto;
@@ -263,6 +277,7 @@ async function deleteColaborador(id) {
 function filterColaboradores() {
     const searchTerm = document.getElementById('searchColaborador').value.toLowerCase();
     const tipoFiltro = document.getElementById('filterTipoColaborador')?.value || 'todos';
+    const estatusFiltro = document.getElementById('filterEstatusColaborador')?.value || 'todos';
     const rows = document.querySelectorAll('#colaboradoresTableBody tr');
     
     rows.forEach(row => {
@@ -282,8 +297,18 @@ function filterColaboradores() {
                 matchesTipo = hasInternoBadge;
             }
         }
+
+        // Filtro por estatus (activo/inactivo)
+        let matchesEstatus = true;
+        if (estatusFiltro !== 'todos') {
+            const badges = row.querySelectorAll('.badge');
+            const hasActivoBadge  = Array.from(badges).some(b => b.textContent.includes('Activo') && !b.textContent.includes('Inactivo'));
+            const hasInactivoBadge = Array.from(badges).some(b => b.textContent.includes('Inactivo'));
+            if (estatusFiltro === 'activo')   matchesEstatus = hasActivoBadge;
+            if (estatusFiltro === 'inactivo') matchesEstatus = hasInactivoBadge;
+        }
         
-        row.style.display = (matchesSearch && matchesTipo) ? '' : 'none';
+        row.style.display = (matchesSearch && matchesTipo && matchesEstatus) ? '' : 'none';
     });
 }
 
@@ -713,6 +738,11 @@ function verDetalleColaborador(id) {
     const tipoBadge = colaborador.esExterno ? 
         '<span class="badge badge-warning" style="font-size: 1em; padding: 8px 16px;">👤 Colaborador Externo</span>' :
         '<span class="badge badge-info" style="font-size: 1em; padding: 8px 16px;">👤 Colaborador Interno</span>';
+
+    const esActivo = colaborador.esActivo !== false;
+    const estatusBadge = esActivo
+        ? '<span class="badge badge-success" style="font-size: 1em; padding: 8px 16px;">🟢 Activo</span>'
+        : '<span class="badge badge-danger" style="font-size: 1em; padding: 8px 16px;">🔴 Inactivo</span>';
     
     const content = `
         <div style="text-align: center; margin-bottom: 30px;">
@@ -724,6 +754,7 @@ function verDetalleColaborador(id) {
             </div>
             <div style="margin-top: 15px;">
                 ${tipoBadge}
+                &nbsp;${estatusBadge}
             </div>
         </div>
         

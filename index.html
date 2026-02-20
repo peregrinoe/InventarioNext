@@ -227,6 +227,14 @@
                                 <option value="externo">Externos</option>
                             </select>
                         </div>
+                        <div class="filter-group">
+                            <label>Filtrar por estatus:</label>
+                            <select id="filterEstatusColaborador" onchange="filterColaboradores()">
+                                <option value="todos">Todos</option>
+                                <option value="activo">Activos</option>
+                                <option value="inactivo">Inactivos</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="table-container">
@@ -239,6 +247,7 @@
                                 <th data-sort="departamento" onclick="ordenarColaboradores('departamento')" style="cursor: pointer;">Departamento</th>
                                 <th data-sort="puesto" onclick="ordenarColaboradores('puesto')" style="cursor: pointer;">Puesto</th>
                                 <th>Contrato</th>
+                                <th>Estatus</th>
                                 <th>Equipos</th>
                                 <th>Licencias</th>
                                 <th>Carta responsiva</th>
@@ -247,7 +256,7 @@
                         </thead>
                         <tbody id="colaboradoresTableBody">
                             <tr>
-                                <td colspan="10" class="empty-state">
+                                <td colspan="11" class="empty-state">
                                     <div class="empty-state-icon">👥</div>
                                     <h3>No hay colaboradores registrados</h3>
                                     <p>Haz clic en "Nuevo Colaborador" para comenzar</p>
@@ -644,6 +653,15 @@
                         </label>
                         <small style="color: #64748b; font-size: 0.85em; margin-top: 5px; display: block;">
                             Marca esta casilla si el colaborador es externo a la empresa
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="colaboradorEsActivo" style="width: 20px; height: 20px; cursor: pointer;" checked>
+                            <span>¿Colaborador activo?</span>
+                        </label>
+                        <small style="color: #64748b; font-size: 0.85em; margin-top: 5px; display: block;">
+                            Desmarca si el colaborador ya no pertenece a la empresa
                         </small>
                     </div>
                 </div>

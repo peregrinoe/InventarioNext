@@ -125,6 +125,15 @@ function updateAlertas() {
     const hoy      = new Date();
     const en30dias = new Date(); en30dias.setDate(en30dias.getDate() + 30);
 
+    // Colaboradores activos sin ninguna asignación (equipo ni celular)
+    const colaboradoresActivos = database.colaboradores.filter(c => c.esActivo !== false);
+    const sinAsignacion = colaboradoresActivos.filter(c =>
+        !database.asignaciones.some(a => a.colaboradorId === c._id && a.estado === 'Activa')
+    );
+    if (sinAsignacion.length > 0) {
+        alertas.push({ tipo: 'info', icon: '👥', msg: `<strong>${sinAsignacion.length}</strong> colaborador(es) activo(s) sin equipos asignados` });
+    }
+
     // Licencias vencidas
     database.licencias.forEach(l => {
         if (l.fechaVencimiento && new Date(l.fechaVencimiento) < hoy) {

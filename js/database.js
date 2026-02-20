@@ -135,6 +135,7 @@ function mapColaborador(row) {
         fechaIngreso: row.fecha_ingreso,
         jefeInmediato: row.jefe_inmediato,
         esExterno: row.es_externo,
+        esActivo: row.es_activo !== false && row.es_activo !== null ? (row.es_activo === undefined ? true : row.es_activo) : false,
         foto: row.foto,
         cartaEstado: row.carta_estado || 'pendiente',
         createdAt: row.created_at
@@ -276,6 +277,7 @@ async function upsertColaborador(colaborador) {
         fecha_ingreso: colaborador.fechaIngreso || null,
         jefe_inmediato: colaborador.jefeInmediato || null,
         es_externo: colaborador.esExterno || false,
+        es_activo: colaborador.esActivo !== false,   // true por defecto
         foto: colaborador.foto || null,
         created_at: colaborador.createdAt
     };
