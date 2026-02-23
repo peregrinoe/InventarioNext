@@ -1,4 +1,15 @@
 // ASIGNACIONES
+
+// Helper: parsear fecha local evitando el desfase de zona horaria UTC
+function parseFechaLocal(fechaStr) {
+    if (!fechaStr) return null;
+    // Si es solo fecha (YYYY-MM-DD), agregarle T00:00 para que JS la trate como local
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+        return new Date(fechaStr + 'T00:00:00');
+    }
+    return new Date(fechaStr);
+}
+
 function updateAsignacionSelects() {
     const selectColaborador = document.getElementById('asignacionColaborador');
     const selectEquipo = document.getElementById('asignacionEquipo');
@@ -208,8 +219,8 @@ function renderAsignaciones() {
             <tr>
                 <td><strong>${colaborador ? colaborador.nombre : 'N/A'}</strong></td>
                 <td>${equipo ? `${equipo.marca} ${equipo.modelo}` : 'N/A'}</td>
-                <td>${new Date(asig.fechaAsignacion).toLocaleDateString()}</td>
-                <td>${asig.fechaDevolucion ? new Date(asig.fechaDevolucion).toLocaleDateString() : '-'}</td>
+                <td>${parseFechaLocal(asig.fechaAsignacion).toLocaleDateString('es-MX')}</td>
+                <td>${asig.fechaDevolucion ? parseFechaLocal(asig.fechaDevolucion).toLocaleDateString('es-MX') : '-'}</td>
                 <td>${estadoBadge}</td>
                 <td>${asig.observaciones || '-'}</td>
                 <td class="action-buttons">
@@ -420,7 +431,7 @@ function renderLicencias() {
                 <td><strong>${lic.software}</strong></td>
                 <td>${lic.tipo}</td>
                 <td><span class="badge badge-info">${cantidadAsignada} usuario(s)</span></td>
-                <td>${lic.fechaVencimiento ? new Date(lic.fechaVencimiento).toLocaleDateString() : '-'}</td>
+                <td>${lic.fechaVencimiento ? parseFechaLocal(lic.fechaVencimiento).toLocaleDateString('es-MX') : '-'}</td>
                 <td><span class="badge ${estadoBadge}">${lic.estado}</span></td>
                 <td class="action-buttons">
                     <button class="btn btn-sm btn-success" onclick='abrirAsignarUsuarios("${lic._id}")'>👥 Asignar</button>
@@ -609,7 +620,7 @@ function verDetalleLicencia(id) {
                 <div style="flex: 1;">
                     <strong style="color: #1e293b;">${colaborador.nombre}</strong>
                     <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">${colaborador.departamento} - ${colaborador.puesto}</p>
-                    <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.85em;">Asignada el: ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
+                    <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.85em;">Asignada el: ${parseFechaLocal(asig.fechaAsignacion).toLocaleDateString('es-MX')}</p>
                 </div>
             </div>
         `;
@@ -634,8 +645,8 @@ function verDetalleLicencia(id) {
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
                 <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">Información de la Licencia</h3>
                 ${licencia.clave ? `<p style="margin: 6px 0; color: #475569; font-family: monospace; font-size: 0.9em;"><strong>Clave:</strong> ${licencia.clave}</p>` : ''}
-                ${licencia.fechaCompra ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Compra:</strong> ${new Date(licencia.fechaCompra).toLocaleDateString()}</p>` : ''}
-                ${licencia.fechaVencimiento ? `<p style="margin: 6px 0; color: #475569;"><strong>Vencimiento:</strong> ${new Date(licencia.fechaVencimiento).toLocaleDateString()}</p>` : ''}
+                ${licencia.fechaCompra ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Compra:</strong> ${parseFechaLocal(licencia.fechaCompra).toLocaleDateString('es-MX')}</p>` : ''}
+                ${licencia.fechaVencimiento ? `<p style="margin: 6px 0; color: #475569;"><strong>Vencimiento:</strong> ${parseFechaLocal(licencia.fechaVencimiento).toLocaleDateString('es-MX')}</p>` : ''}
             </div>
             
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
