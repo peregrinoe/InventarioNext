@@ -95,42 +95,33 @@ function renderColaboradores() {
     
     // Aplicar ordenamiento
     colaboradoresOrdenados.sort((a, b) => {
-        let valorA, valorB;
-        
+        const norm = str => normalizarTexto(str || '');
+
         switch(ordenColaboradores.campo) {
             case 'nombre':
-                valorA = a.nombre.toLowerCase();
-                valorB = b.nombre.toLowerCase();
-                break;
             case 'email':
-                valorA = a.email.toLowerCase();
-                valorB = b.email.toLowerCase();
-                break;
             case 'departamento':
-                valorA = a.departamento.toLowerCase();
-                valorB = b.departamento.toLowerCase();
-                break;
-            case 'puesto':
-                valorA = a.puesto.toLowerCase();
-                valorB = b.puesto.toLowerCase();
-                break;
-            case 'tipo':
-                valorA = a.esExterno ? 'z_externo' : 'a_interno'; // Para que externos vayan al final
-                valorB = b.esExterno ? 'z_externo' : 'a_interno';
-                break;
-            case 'equipos':
-                valorA = database.asignaciones.filter(asig => asig.colaboradorId === a._id && asig.estado === 'Activa').length;
-                valorB = database.asignaciones.filter(asig => asig.colaboradorId === b._id && asig.estado === 'Activa').length;
-                break;
-            default:
-                valorA = a.nombre.toLowerCase();
-                valorB = b.nombre.toLowerCase();
-        }
-        
-        if (ordenColaboradores.direccion === 'asc') {
-            return valorA > valorB ? 1 : valorA < valorB ? -1 : 0;
-        } else {
-            return valorA < valorB ? 1 : valorA > valorB ? -1 : 0;
+            case 'puesto': {
+                const campo = ordenColaboradores.campo;
+                const cmp = norm(a[campo]).localeCompare(norm(b[campo]), 'es');
+                return ordenColaboradores.direccion === 'asc' ? cmp : -cmp;
+            }
+            case 'tipo': {
+                const vA = a.esExterno ? 1 : 0;
+                const vB = b.esExterno ? 1 : 0;
+                const cmp = vA - vB;
+                return ordenColaboradores.direccion === 'asc' ? cmp : -cmp;
+            }
+            case 'equipos': {
+                const vA = database.asignaciones.filter(asig => asig.colaboradorId === a._id && asig.estado === 'Activa').length;
+                const vB = database.asignaciones.filter(asig => asig.colaboradorId === b._id && asig.estado === 'Activa').length;
+                const cmp = vA - vB;
+                return ordenColaboradores.direccion === 'asc' ? cmp : -cmp;
+            }
+            default: {
+                const cmp = norm(a.nombre).localeCompare(norm(b.nombre), 'es');
+                return ordenColaboradores.direccion === 'asc' ? cmp : -cmp;
+            }
         }
     });
     
@@ -274,41 +265,56 @@ async function deleteColaborador(id) {
     }
 }
 
+// Helper: normaliza texto eliminando acentos para búsqueda
+function normalizarTexto(str) {
+    return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 function filterColaboradores() {
-    const searchTerm = document.getElementById('searchColaborador').value.toLowerCase();
-    const tipoFiltro = document.getElementById('filterTipoColaborador')?.value || 'todos';
+    const searchTerm    = normalizarTexto(document.getElementById('searchColaborador').value);
+    const tipoFiltro    = document.getElementById('filterTipoColaborador')?.value    || 'todos';
     const estatusFiltro = document.getElementById('filterEstatusColaborador')?.value || 'todos';
+    const cartaFiltro   = document.getElementById('filterCartaColaborador')?.value   || 'todos';
     const rows = document.querySelectorAll('#colaboradoresTableBody tr');
-    
+
     rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
+        // Búsqueda sin acentos
+        const text = normalizarTexto(row.textContent);
         const matchesSearch = text.includes(searchTerm);
-        
+
         // Filtro por tipo (interno/externo)
         let matchesTipo = true;
         if (tipoFiltro !== 'todos') {
             const badges = row.querySelectorAll('.badge');
-            const hasExternoBadge = Array.from(badges).some(badge => badge.textContent.includes('Externo'));
-            const hasInternoBadge = Array.from(badges).some(badge => badge.textContent.includes('Interno'));
-            
-            if (tipoFiltro === 'externo') {
-                matchesTipo = hasExternoBadge;
-            } else if (tipoFiltro === 'interno') {
-                matchesTipo = hasInternoBadge;
-            }
+            const hasExternoBadge = Array.from(badges).some(b => b.textContent.includes('Externo'));
+            const hasInternoBadge = Array.from(badges).some(b => b.textContent.includes('Interno'));
+            if (tipoFiltro === 'externo') matchesTipo = hasExternoBadge;
+            if (tipoFiltro === 'interno') matchesTipo = hasInternoBadge;
         }
 
         // Filtro por estatus (activo/inactivo)
         let matchesEstatus = true;
         if (estatusFiltro !== 'todos') {
             const badges = row.querySelectorAll('.badge');
-            const hasActivoBadge  = Array.from(badges).some(b => b.textContent.includes('Activo') && !b.textContent.includes('Inactivo'));
+            const hasActivoBadge   = Array.from(badges).some(b => b.textContent.includes('Activo') && !b.textContent.includes('Inactivo'));
             const hasInactivoBadge = Array.from(badges).some(b => b.textContent.includes('Inactivo'));
             if (estatusFiltro === 'activo')   matchesEstatus = hasActivoBadge;
             if (estatusFiltro === 'inactivo') matchesEstatus = hasInactivoBadge;
         }
-        
-        row.style.display = (matchesSearch && matchesTipo && matchesEstatus) ? '' : 'none';
+
+        // Filtro por carta responsiva
+        let matchesCarta = true;
+        if (cartaFiltro !== 'todos') {
+            const badges = row.querySelectorAll('.badge');
+            const hasCompleta  = Array.from(badges).some(b => b.textContent.includes('Completa'));
+            const hasPendiente = Array.from(badges).some(b => b.textContent.includes('Pendiente'));
+            const hasSinEquipo = !hasCompleta && !hasPendiente;
+            if (cartaFiltro === 'completa')   matchesCarta = hasCompleta;
+            if (cartaFiltro === 'pendiente')  matchesCarta = hasPendiente;
+            if (cartaFiltro === 'sin_equipo') matchesCarta = hasSinEquipo;
+        }
+
+        row.style.display = (matchesSearch && matchesTipo && matchesEstatus && matchesCarta) ? '' : 'none';
     });
 }
 
