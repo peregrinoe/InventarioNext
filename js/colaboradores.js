@@ -369,9 +369,53 @@ async function toggleCartaEstado(colaboradorId) {
     renderColaboradores(); // refrescar badge en la tabla
 }
 
-function descargarCartaResponsiva(colaboradorId) {
+// Parsea una fecha ISO/timestamp de Supabase sin desfase de zona horaria.
+// "2026-02-23" o "2026-02-23T00:00:00+00" → Date en medianoche local.
+function _parseFechaSinDesfase(valor) {
+    if (!valor) return null;
+    // Tomar solo la parte YYYY-MM-DD y construir como fecha local
+    const solo = String(valor).slice(0, 10); // "2026-02-23"
+    const [y, m, d] = solo.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+async function descargarCartaResponsiva(colaboradorId) {
     const colaborador = database.colaboradores.find(c => c._id === colaboradorId);
     if (!colaborador) { showNotification('❌ Colaborador no encontrado', 'error'); return; }
+
+    // ── Refrescar asignaciones desde Supabase para tener la fecha más reciente ──
+    showNotification('⏳ Preparando carta...', 'success');
+    try {
+        const { data: rows, error } = await supabaseClient
+            .from('asignaciones')
+            .select('*')
+            .eq('colaborador_id', colaboradorId)
+            .eq('estado', 'Activa');
+
+        if (!error && rows) {
+            // Actualizar sólo las asignaciones de este colaborador en el array global
+            database.asignaciones = database.asignaciones.filter(
+                a => a.colaboradorId !== colaboradorId || a.estado !== 'Activa'
+            );
+            rows.forEach(row => database.asignaciones.push(mapAsignacion(row)));
+        }
+
+        // Refrescar también asignaciones de celulares
+        const { data: rowsCel, error: errCel } = await supabaseClient
+            .from('asignaciones_celulares')
+            .select('*')
+            .eq('colaborador_id', colaboradorId)
+            .eq('estado', 'Activa');
+
+        if (!errCel && rowsCel) {
+            database.asignacionesCelulares = (database.asignacionesCelulares || []).filter(
+                a => a.colaboradorId !== colaboradorId || a.estado !== 'Activa'
+            );
+            rowsCel.forEach(row => database.asignacionesCelulares.push(mapAsignacionCelular(row)));
+        }
+    } catch (e) {
+        console.warn('No se pudo refrescar desde Supabase, usando caché local:', e);
+    }
 
     const asignacionesActivas = database.asignaciones.filter(a =>
         a.colaboradorId === colaboradorId && a.estado === 'Activa'
@@ -415,9 +459,10 @@ function descargarCartaResponsiva(colaboradorId) {
 
         // ── Párrafo introductorio ──────────────────────────────────────────
         setFont('normal', 12);
-        const fechaAsig = asignacionesActivas[0] && asignacionesActivas[0].fechaAsignacion
-            ? new Date(asignacionesActivas[0].fechaAsignacion).toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'})
-            : new Date().toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'});
+        const _fechaAsigObj = asignacionesActivas[0] && asignacionesActivas[0].fechaAsignacion
+            ? _parseFechaSinDesfase(asignacionesActivas[0].fechaAsignacion)
+            : new Date();
+        const fechaAsig = _fechaAsigObj.toLocaleDateString('es-MX', {year:'numeric', month:'long', day:'numeric'});
         y = wrappedText('Recibí del área de sistemas el equipo de cómputo que se menciona a continuación;', ML, y, CW, 5);
         y += 4;
 
@@ -489,7 +534,7 @@ function descargarCartaResponsiva(colaboradorId) {
             if (!eq) return;
             const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
             const fechaEq = asig.fechaAsignacion
-                ? new Date(asig.fechaAsignacion).toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'})
+                ? _parseFechaSinDesfase(asig.fechaAsignacion).toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'})
                 : '';
             drawTableRow(y, [eq.tipo || '', eq.marca || '', eq.modelo || '', eq.numSerie || '', fechaEq], bg);
             y += rowH;
@@ -503,7 +548,7 @@ function descargarCartaResponsiva(colaboradorId) {
             const bg = filaIdx % 2 === 0 ? [245,245,245] : [255,255,255];
             const tipo = 'Celular' + (cel.numero ? ' (' + cel.numero + ')' : '');
             const fechaCel = asig.fechaAsignacion
-                ? new Date(asig.fechaAsignacion).toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'})
+                ? _parseFechaSinDesfase(asig.fechaAsignacion).toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'})
                 : '';
             drawTableRow(y, [tipo, cel.marca || '', cel.modelo || '', cel.imei || cel.numSerie || '', fechaCel], bg);
             y += rowH;
