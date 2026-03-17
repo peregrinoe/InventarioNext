@@ -10,6 +10,18 @@ function parseFechaLocal(fechaStr) {
     return new Date(fechaStr);
 }
 
+// Mostrar/ocultar campo de fecha fin temporal según el checkbox
+function toggleFechaFinTemporal() {
+    const cb = document.getElementById('asignacionEsTemporal');
+    const bloque = document.getElementById('campoFechaFinTemporal');
+    if (!cb || !bloque) return;
+    bloque.style.display = cb.checked ? 'block' : 'none';
+    if (!cb.checked) {
+        const f = document.getElementById('asignacionFechaFinTemporal');
+        if (f) f.value = '';
+    }
+}
+
 function updateAsignacionSelects() {
     const selectColaborador = document.getElementById('asignacionColaborador');
     const selectEquipo = document.getElementById('asignacionEquipo');
@@ -56,6 +68,14 @@ function abrirNuevaAsignacion() {
     if (fechaInput) {
         fechaInput.value = new Date().toISOString().split('T')[0];
     }
+    
+    // Limpiar campos temporales
+    const cbTemp = document.getElementById('asignacionEsTemporal');
+    if (cbTemp) cbTemp.checked = false;
+    const bloque = document.getElementById('campoFechaFinTemporal');
+    if (bloque) bloque.style.display = 'none';
+    const fechaFin = document.getElementById('asignacionFechaFinTemporal');
+    if (fechaFin) fechaFin.value = '';
     
     // Establecer estado por defecto
     const estadoSelect = document.getElementById('asignacionEstado');
@@ -115,6 +135,10 @@ async function saveAsignacion(event) {
         asignacion.fechaAsignacion = document.getElementById('asignacionFecha').value;
         asignacion.estado = document.getElementById('asignacionEstado').value;
         asignacion.observaciones = document.getElementById('asignacionObservaciones').value;
+        asignacion.esTemporal = document.getElementById('asignacionEsTemporal')?.checked || false;
+        asignacion.fechaFinTemporal = asignacion.esTemporal
+            ? (document.getElementById('asignacionFechaFinTemporal')?.value || null)
+            : null;
         
         // Si cambió el equipo, actualizar estados
         if (equipoAnterior !== equipoId) {
@@ -150,6 +174,7 @@ async function saveAsignacion(event) {
         showNotification('✅ Asignación actualizada correctamente');
     } else {
         // CREAR nueva asignación
+        const _esTemporal = document.getElementById('asignacionEsTemporal')?.checked || false;
         const asignacion = {
             _id: 'ASG' + Date.now(),
             colaboradorId: colaboradorId,
@@ -158,6 +183,10 @@ async function saveAsignacion(event) {
             fechaDevolucion: null,
             estado: document.getElementById('asignacionEstado').value,
             observaciones: document.getElementById('asignacionObservaciones').value,
+            esTemporal: _esTemporal,
+            fechaFinTemporal: _esTemporal
+                ? (document.getElementById('asignacionFechaFinTemporal')?.value || null)
+                : null,
             createdAt: new Date().toISOString()
         };
         
@@ -214,22 +243,37 @@ function renderAsignaciones() {
         const estadoBadge = asig.estado === 'Activa' ? 
             '<span class="badge badge-success">Activa</span>' : 
             '<span class="badge badge-warning">Devuelto</span>';
+
+        const tipoBadge = asig.esTemporal
+            ? '<span class="badge badge-warning" title="Asignación temporal">⏳ Temporal</span>'
+            : '<span class="badge badge-info">Permanente</span>';
+
+        const fechaDevCol = asig.esTemporal && asig.fechaFinTemporal
+            ? `<span style="color:#92400e;">⏳ ${parseFechaLocal(asig.fechaFinTemporal).toLocaleDateString('es-MX')}</span>`
+            : (asig.fechaDevolucion ? parseFechaLocal(asig.fechaDevolucion).toLocaleDateString('es-MX') : '-');
         
         return `
             <tr>
                 <td><strong>${colaborador ? colaborador.nombre : 'N/A'}</strong></td>
                 <td>${equipo ? `${equipo.marca} ${equipo.modelo}` : 'N/A'}</td>
+                <td>${tipoBadge}</td>
                 <td>${parseFechaLocal(asig.fechaAsignacion).toLocaleDateString('es-MX')}</td>
-                <td>${asig.fechaDevolucion ? parseFechaLocal(asig.fechaDevolucion).toLocaleDateString('es-MX') : '-'}</td>
+                <td>${fechaDevCol}</td>
                 <td>${estadoBadge}</td>
                 <td>${asig.observaciones || '-'}</td>
                 <td class="action-buttons">
-                    <button class="btn btn-sm btn-primary" onclick='editAsignacion("${asig._id}")' title="Editar asignación">✏️ Editar</button>
-                    ${asig.estado === 'Activa' ? 
-                        `<button class="btn btn-sm btn-warning" onclick='devolverEquipo("${asig._id}")' title="Devolver equipo">↩️ Devolver</button>` : 
-                        ''
-                    }
-                    <button class="btn btn-sm btn-danger" onclick='deleteAsignacion("${asig._id}")' title="Eliminar asignación">🗑️</button>
+                    <div class="action-buttons-inner">
+                        <button class="btn btn-sm btn-primary" onclick='editAsignacion("${asig._id}")' title="Editar asignación">✏️ Editar</button>
+                        ${asig.estado === 'Activa' ? 
+                            `<button class="btn btn-sm btn-warning" onclick='devolverEquipo("${asig._id}")' title="Devolver equipo">↩️ Devolver</button>` : 
+                            ''
+                        }
+                        ${asig.esTemporal && asig.estado === 'Activa' && colaborador
+                            ? `<button class="btn btn-sm btn-info carta-responsiva" onclick='descargarCartaTemporal("${colaborador._id}","${asig._id}")' title="Carta responsiva temporal">📄 Carta Temporal</button>`
+                            : ''
+                        }
+                        <button class="btn btn-sm btn-danger" onclick='deleteAsignacion("${asig._id}")' title="Eliminar asignación">🗑️</button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -297,6 +341,16 @@ function editAsignacion(id) {
     if (textareaObs) {
         textareaObs.value = asignacion.observaciones || '';
     }
+
+    // Rellenar campos temporales
+    const cbTemp = document.getElementById('asignacionEsTemporal');
+    const bloque = document.getElementById('campoFechaFinTemporal');
+    const inputFinTemp = document.getElementById('asignacionFechaFinTemporal');
+    if (cbTemp) cbTemp.checked = !!asignacion.esTemporal;
+    if (bloque) bloque.style.display = asignacion.esTemporal ? 'block' : 'none';
+    if (inputFinTemp) inputFinTemp.value = asignacion.fechaFinTemporal
+        ? String(asignacion.fechaFinTemporal).slice(0, 10)
+        : '';
     
     // Cambiar título del modal si existe
     const modalTitle = document.getElementById('modalAsignacionTitle');

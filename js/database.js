@@ -229,7 +229,9 @@ function mapAsignacion(row) {
         fechaAsignacion: row.fecha_asignacion,
         fechaDevolucion: row.fecha_devolucion,
         estado: row.estado,
-        notas: row.notas
+        notas: row.notas,
+        esTemporal: row.es_temporal || false,
+        fechaFinTemporal: row.fecha_fin_temporal || null
     };
 }
 
@@ -378,7 +380,9 @@ async function upsertAsignacion(asig) {
         fecha_asignacion: asig.fechaAsignacion,
         fecha_devolucion: asig.fechaDevolucion || null,
         estado: asig.estado,
-        notas: asig.notas || null
+        notas: asig.notas || null,
+        es_temporal: asig.esTemporal || false,
+        fecha_fin_temporal: asig.fechaFinTemporal || null
     };
 
     const { error } = await supabaseClient.from('asignaciones').upsert(row, { onConflict: 'id' });

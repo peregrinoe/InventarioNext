@@ -429,8 +429,9 @@
                             <tr>
                                 <th>Colaborador</th>
                                 <th>Equipo</th>
+                                <th>Tipo</th>
                                 <th>Fecha Asignación</th>
-                                <th>Fecha Devolución</th>
+                                <th>Fecha Devolución / Fin Temporal</th>
                                 <th>Estado</th>
                                 <th>Observaciones</th>
                                 <th>Acciones</th>
@@ -438,7 +439,7 @@
                         </thead>
                         <tbody id="asignacionesTableBody">
                             <tr>
-                                <td colspan="7" class="empty-state">
+                                <td colspan="8" class="empty-state">
                                     <div class="empty-state-icon">🔗</div>
                                     <h3>No hay asignaciones registradas</h3>
                                     <p>Haz clic en "Nueva Asignación" para comenzar</p>
@@ -1024,7 +1025,7 @@
     <div id="modalAsignacion" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Nueva Asignación</h3>
+                <h3 id="modalAsignacionTitle">Nueva Asignación</h3>
                 <button class="close-modal" onclick="closeModal('modalAsignacion')">&times;</button>
             </div>
             <form id="formAsignacion" onsubmit="saveAsignacion(event)">
@@ -1053,9 +1054,26 @@
                         </select>
                     </div>
                 </div>
+                <!-- Bloque temporal -->
+                <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;color:#92400e;">
+                            <input type="checkbox" id="asignacionEsTemporal" onchange="toggleFechaFinTemporal()"
+                                style="width:18px;height:18px;accent-color:#d97706;cursor:pointer;">
+                            ⏳ Asignación Temporal
+                        </label>
+                        <small style="color:#92400e;margin-top:4px;display:block;">Actívalo cuando el equipo se presta de manera provisional (ej. mientras llega el equipo definitivo o por ausencia del titular).</small>
+                    </div>
+                    <div id="campoFechaFinTemporal" style="display:none;">
+                        <div class="form-group">
+                            <label>Fecha estimada de devolución</label>
+                            <input type="date" id="asignacionFechaFinTemporal">
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>Observaciones</label>
-                    <textarea id="asignacionObservaciones" placeholder="Condiciones, accesorios incluidos, etc."></textarea>
+                    <textarea id="asignacionObservaciones" placeholder="Condiciones, accesorios incluidos, motivo del préstamo temporal, etc."></textarea>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-success">💾 Asignar Equipo</button>
