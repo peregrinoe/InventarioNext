@@ -124,19 +124,16 @@ function showApp() {
     const roleColor = currentUser.role === 'superadmin' ? '#10b981' : '#3b82f6';
 
     document.getElementById('userInfoBar').innerHTML = `
-        <span style="display:flex;align-items:center;gap:8px;">
-            <span style="background:${roleColor};color:white;padding:4px 12px;border-radius:20px;font-size:0.8em;font-weight:700;">
-                ${roleIcon} ${roleName}
-            </span>
-            <span style="color:#64748b;font-size:0.9em;">${currentUser.nombre}</span>
-        </span>
-        <button onclick="doLogout()"
-            style="background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.85em;transition:all 0.2s;"
-            onmouseover="this.style.background='#fee2e2';this.style.color='#dc2626'"
-            onmouseout="this.style.background='#f1f5f9';this.style.color='#64748b'">
-            🚪 Cerrar sesión
-        </button>
+        <div class="topbar-user">
+            <span class="topbar-role-badge" style="background:${roleColor};">${roleIcon} ${roleName}</span>
+            <span class="topbar-nombre">${currentUser.nombre}</span>
+        </div>
+        <div class="topbar-actions">
+            <button id="themeToggle" class="topbar-theme-btn" onclick="toggleTheme()" title="Modo claro / oscuro">🌙</button>
+            <button id="logoutBtn" class="topbar-logout-btn" onclick="doLogout()">🚪 Cerrar sesión</button>
+        </div>
     `;
+    _syncThemeIcon();
 
     applyRoleRestrictions();
 
@@ -151,10 +148,10 @@ function applyRoleRestrictions() {
         const style = document.createElement('style');
         style.id = 'operador-restrictions';
         style.textContent = `
-            .btn-primary:not(.allow-operador),
-            .btn-danger,
-            .btn-warning:not(.allow-operador):not(.carta-responsiva),
-            .btn-success:not(.allow-operador),
+            .btn-primary:not(.allow-operador):not(#logoutBtn):not(.topbar-logout-btn):not(.topbar-theme-btn),
+            .btn-danger:not(#logoutBtn):not(.topbar-logout-btn),
+            .btn-warning:not(.allow-operador):not(.carta-responsiva):not(.topbar-logout-btn),
+            .btn-success:not(.allow-operador):not(#logoutBtn):not(.topbar-logout-btn),
             .backup-controls .btn-info { display: none !important; }
 
             #fileInput { display: none !important; }
@@ -216,3 +213,25 @@ function patchModalsForOperador() {
 // ── Helpers públicos ────────────────────────────────────────────────────────
 function isSuperAdmin() { return currentUser && currentUser.role === 'superadmin'; }
 function isOperador()   { return currentUser && currentUser.role === 'operador'; }
+
+// ── Theme toggle ────────────────────────────────────────────────────────────
+function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    _syncThemeIcon();
+}
+
+function _syncThemeIcon() {
+    const btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    const isLight = document.body.classList.contains('light-mode');
+    btn.textContent = isLight ? '☀️' : '🌙';
+    btn.title = isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+}
+
+// Aplicar tema guardado al cargar
+(function _applyStoredTheme() {
+    if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light-mode');
+    }
+})();
