@@ -243,7 +243,9 @@ function mapAsignacionCelular(row) {
         fechaAsignacion: row.fecha_asignacion,
         fechaDevolucion: row.fecha_devolucion,
         estado: row.estado,
-        notas: row.notas
+        notas: row.notas,
+        esTemporal: row.es_temporal || false,
+        fechaFinTemporal: row.fecha_fin_temporal || null
     };
 }
 
@@ -397,7 +399,9 @@ async function upsertAsignacionCelular(asig) {
         fecha_asignacion: asig.fechaAsignacion,
         fecha_devolucion: asig.fechaDevolucion || null,
         estado: asig.estado,
-        notas: asig.notas || null
+        notas: asig.notas || null,
+        es_temporal: asig.esTemporal || false,
+        fecha_fin_temporal: asig.fechaFinTemporal || null
     };
 
     const { error } = await supabaseClient.from('asignaciones_celulares').upsert(row, { onConflict: 'id' });
@@ -565,6 +569,8 @@ function renderAll() {
     try { if (typeof renderCelulares === 'function') renderCelulares(); } catch(e) {}
     try { if (typeof renderAsignaciones === 'function') renderAsignaciones(); } catch(e) {}
     try { if (typeof renderLicencias === 'function') renderLicencias(); } catch(e) {}
+    // Actualizar badge de bajas pendientes sin bloquear
+    try { if (typeof cargarBadgeBajas === 'function') cargarBadgeBajas(); } catch(e) {}
 }
 
 // ================================
@@ -583,6 +589,12 @@ function showSection(sectionId) {
         if (typeof updateDashboardTable === 'function') updateDashboardTable();
     } else if (sectionId === 'reportes') {
         if (typeof updateReportesStats === 'function') updateReportesStats();
+    } else if (sectionId === 'bajas') {
+        if (typeof loadSolicitudesBaja === 'function') {
+            loadSolicitudesBaja().then(() => {
+                if (typeof renderBajas === 'function') renderBajas();
+            });
+        }
     }
 }
 

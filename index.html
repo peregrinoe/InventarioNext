@@ -89,6 +89,14 @@
             <button class="nav-btn" onclick="showSection('reportes')">
                 📈 Reportes
             </button>
+            <button class="nav-btn" onclick="showSection('bajas')" style="position:relative;">
+                🚪 Bajas
+                <span id="badgeBajasPendientes"
+                      style="display:none;position:absolute;top:6px;right:6px;
+                             background:#ef4444;color:white;border-radius:50%;
+                             width:18px;height:18px;font-size:0.7em;font-weight:700;
+                             align-items:center;justify-content:center;">0</span>
+            </button>
         </nav>
         
         <div class="content-area">
@@ -578,6 +586,20 @@
                     </ul>
                 </div>
             </section>
+
+            <!-- BAJAS -->
+            <section id="bajas" class="section">
+                <div class="section-header">
+                    <h2>🚪 Gestión de Bajas</h2>
+                </div>
+                <div id="bajasContenido">
+                    <div style="text-align:center;padding:60px;color:#94a3b8;">
+                        <div style="font-size:2.5em;margin-bottom:10px;">🚪</div>
+                        <div style="font-weight:600;">Cargando módulo de bajas…</div>
+                    </div>
+                </div>
+            </section>
+
         </div>
     </div>
     
@@ -1337,6 +1359,74 @@
         </div>
     </div>
     
+    <!-- MODAL SOLICITUD DE BAJA (Operador / Admin) -->
+    <div id="modalSolicitudBaja" class="modal">
+        <div class="modal-content" style="max-width:540px;">
+            <div class="modal-header">
+                <h3>📨 Solicitar Baja de Colaborador</h3>
+                <button class="close-modal" onclick="closeModalDirecto('modalSolicitudBaja')">&times;</button>
+            </div>
+            <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:20px;">
+                <div style="font-weight:700;color:#1e293b;font-size:1.05em;" id="bajaSolNombre">—</div>
+                <div style="color:#64748b;font-size:0.88em;margin-top:4px;">
+                    <span id="bajaSolPuesto">—</span> · <span id="bajaSolDepto">—</span>
+                </div>
+            </div>
+            <div id="bajaSolResumenActivos" style="margin-bottom:20px;"></div>
+            <input type="hidden" id="bajaSolColaboradorId">
+            <div class="form-group" style="margin-bottom:16px;">
+                <label>📅 Fecha efectiva de baja</label>
+                <input type="date" id="bajaSolFecha">
+            </div>
+            <div class="form-group" style="margin-bottom:20px;">
+                <label>📝 Motivo de la solicitud <span style="color:#ef4444;">*</span></label>
+                <textarea id="bajaSolMotivo" rows="3"
+                    placeholder="Describe el motivo: renuncia voluntaria, término de contrato, despido, etc."></textarea>
+            </div>
+            <div style="background:#dbeafe;border-radius:8px;padding:12px;font-size:0.85em;color:#1e40af;margin-bottom:20px;">
+                ℹ️ Esta solicitud será revisada por el administrador. Recibirás confirmación cuando sea procesada.
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-warning allow-operador" onclick="enviarSolicitudBaja()">📨 Enviar Solicitud</button>
+                <button class="btn btn-secondary" onclick="closeModalDirecto('modalSolicitudBaja')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMACIÓN DE BAJA (Admin) -->
+    <div id="modalConfirmacionBaja" class="modal">
+        <div class="modal-content" style="max-width:580px;">
+            <div class="modal-header">
+                <h3>⚠️ Confirmar Baja de Colaborador</h3>
+                <button class="close-modal" onclick="closeModalDirecto('modalConfirmacionBaja')">&times;</button>
+            </div>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:2em;">🚪</span>
+                    <div>
+                        <div style="font-weight:700;color:#991b1b;font-size:1.05em;" id="bajaConfNombre">—</div>
+                        <div style="color:#b91c1c;font-size:0.88em;">
+                            <span id="bajaConfPuesto">—</span> · <span id="bajaConfDepto">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:20px;">
+                <label>📝 Motivo de la baja <span style="color:#ef4444;">*</span></label>
+                <textarea id="bajaConfMotivo" rows="3"
+                    placeholder="Renuncia voluntaria, término de contrato, despido justificado…"></textarea>
+            </div>
+            <div id="bajaConfReasignacion" style="margin-bottom:20px;"></div>
+            <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:12px;font-size:0.85em;color:#92400e;margin-bottom:20px;">
+                ⚠️ Esta acción marcará al colaborador como <strong>inactivo</strong> y quedará registrado en el historial de bajas.
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-danger" onclick="confirmarBaja()">✅ Confirmar Baja</button>
+                <button class="btn btn-secondary" onclick="closeModalDirecto('modalConfirmacionBaja')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- NOTIFICACIONES -->
     <div id="notification" class="notification">
         <span id="notificationText"></span>
@@ -1356,6 +1446,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="./js/dashboard.js"></script>
 <script src="./js/reportes.js"></script>
+<script src="./js/bajas.js"></script>
 <script>initAuth();</script>
 </body>
 </html>

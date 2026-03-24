@@ -129,9 +129,14 @@ function renderColaboradores() {
     actualizarIconosOrdenamiento();
     
     tbody.innerHTML = colaboradoresOrdenados.map(col => {
-        const equiposAsignados = database.asignaciones.filter(a => 
-            a.colaboradorId === col._id && a.estado === 'Activa'
-        ).length;
+        // Separar asignaciones permanentes y temporales
+        const asigPerm = database.asignaciones.filter(a =>
+            a.colaboradorId === col._id && a.estado === 'Activa' && !a.esTemporal
+        );
+        const asigTemp = database.asignaciones.filter(a =>
+            a.colaboradorId === col._id && a.estado === 'Activa' && a.esTemporal
+        );
+        const equiposAsignados = asigPerm.length + asigTemp.length;
         
         const licenciasAsignadas = database.licenciasAsignaciones.filter(la => 
             la.colaboradorId === col._id
@@ -141,16 +146,24 @@ function renderColaboradores() {
             `<img src="${col.foto}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover">` :
             `<div style="width: 40px; height: 40px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${col.nombre.charAt(0)}</div>`;
         
-        // Badge para tipo de colaborador
         const tipoBadge = col.esExterno ? 
             '<span class="badge badge-warning">Externo</span>' : 
             '<span class="badge badge-info">Interno</span>';
 
-        // Badge para estatus activo/inactivo
-        const esActivo = col.esActivo !== false; // true por defecto
+        const esActivo = col.esActivo !== false;
         const estatusBadge = esActivo
             ? '<span class="badge badge-success">🟢 Activo</span>'
             : '<span class="badge badge-danger">🔴 Inactivo</span>';
+
+        // Badge con desglose perm/temp
+        let equiposBadge;
+        if (asigPerm.length > 0 && asigTemp.length > 0) {
+            equiposBadge = `<span class="badge badge-info">${asigPerm.length} perm.</span> <span class="badge badge-warning">${asigTemp.length} temp.</span>`;
+        } else if (asigTemp.length > 0) {
+            equiposBadge = `<span class="badge badge-warning">⏳ ${asigTemp.length} temp.</span>`;
+        } else {
+            equiposBadge = `<span class="badge badge-info">${equiposAsignados} equipo(s)</span>`;
+        }
         
         return `
             <tr style="${esActivo ? '' : 'opacity:0.6;background:#fafafa;'}">
@@ -161,7 +174,7 @@ function renderColaboradores() {
                 <td>${col.puesto}</td>
                 <td>${tipoBadge}</td>
                 <td>${estatusBadge}</td>
-                <td><span class="badge badge-info">${equiposAsignados} equipo(s)</span></td>
+                <td>${equiposBadge}</td>
                 <td><span class="badge badge-success">${licenciasAsignadas} licencia(s)</span></td>
                 <td>
                     ${equiposAsignados > 0
@@ -172,16 +185,10 @@ function renderColaboradores() {
                     }
                 </td>
                 <td class="action-buttons">
-                    ${equiposAsignados > 0 ? `<button class="btn btn-sm btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
-                    ${(() => {
-                        const tieneTemp = database.asignaciones.some(a =>
-                            a.colaboradorId === col._id && a.estado === 'Activa' && a.esTemporal
-                        );
-                        return tieneTemp
-                            ? `<button class="btn btn-sm btn-info carta-responsiva" onclick='descargarCartaTemporal("${col._id}")' title="Carta responsiva temporal">⏳ Carta Temp.</button>`
-                            : '';
-                    })()}
+                    ${asigPerm.length > 0 ? `<button class="btn btn-sm btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${col._id}")' title="Descargar carta responsiva">📄 Carta</button>` : ''}
+                    ${asigTemp.length > 0 ? `<button class="btn btn-sm btn-info carta-responsiva" onclick='descargarCartaTemporal("${col._id}")' title="Carta responsiva temporal">⏳ Carta Temp.</button>` : ''}
                     <button class="btn btn-sm btn-info" onclick='verDetalleColaborador("${col._id}")'>👁️ Ver</button>
+                    ${esActivo ? `<button class="btn btn-sm btn-warning allow-operador" onclick='abrirModalSolicitudBaja("${col._id}")' title="Solicitar baja">🚪 Baja</button>` : ''}
                     <button class="btn btn-sm btn-primary" onclick='editColaborador("${col._id}")'>✏️</button>
                     <button class="btn btn-sm btn-danger" onclick='deleteColaborador("${col._id}")'>🗑️</button>
                 </td>
@@ -426,10 +433,10 @@ async function descargarCartaResponsiva(colaboradorId) {
     }
 
     const asignacionesActivas = database.asignaciones.filter(a =>
-        a.colaboradorId === colaboradorId && a.estado === 'Activa'
+        a.colaboradorId === colaboradorId && a.estado === 'Activa' && !a.esTemporal
     );
     if (asignacionesActivas.length === 0) {
-        showNotification('❌ El colaborador no tiene equipos asignados actualmente', 'error');
+        showNotification('❌ El colaborador no tiene equipos asignados permanentes actualmente', 'error');
         return;
     }
 
@@ -677,6 +684,10 @@ function verDetalleColaborador(id) {
     const asignacionesActivas = database.asignaciones.filter(a => 
         a.colaboradorId === id && a.estado === 'Activa'
     );
+
+    // Separar para mostrar los botones de carta correctos
+    const asigPermDetalle = asignacionesActivas.filter(a => !a.esTemporal);
+    const asigTempDetalle = asignacionesActivas.filter(a => a.esTemporal);
     
     const historialAsignaciones = database.asignaciones
         .filter(a => a.colaboradorId === id)
@@ -837,7 +848,13 @@ function verDetalleColaborador(id) {
             
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
                 <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">📊 Estadísticas</h3>
-                <p style="margin: 6px 0; color: #475569;"><strong>Equipos Asignados:</strong> ${asignacionesActivas.length}</p>
+                <p style="margin: 6px 0; color: #475569;"><strong>Equipos Asignados:</strong> ${
+                    asigPermDetalle.length > 0 && asigTempDetalle.length > 0
+                        ? `${asigPermDetalle.length} permanente(s) · ${asigTempDetalle.length} temporal(es)`
+                        : asigTempDetalle.length > 0
+                            ? `${asigTempDetalle.length} temporal(es)`
+                            : asignacionesActivas.length
+                }</p>
                 <p style="margin: 6px 0; color: #475569;"><strong>Licencias:</strong> ${licenciasAsignacionesCol.length}</p>
                 <p style="margin: 6px 0; color: #475569;"><strong>Celulares Asignados:</strong> ${asignacionesCelularesActivas.length}</p>
                 ${colaborador.fechaIngreso ? `<p style="margin: 6px 0; color: #475569;"><strong>Fecha Ingreso:</strong> ${formatFechaLocal(colaborador.fechaIngreso)}</p>` : ''}
@@ -846,10 +863,11 @@ function verDetalleColaborador(id) {
         
         ${asignacionesActivas.length > 0 ? `
             <div style="margin-bottom: 16px; text-align: center; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                ${asigPermDetalle.length > 0 ? `
                 <button class="btn btn-warning carta-responsiva" onclick='descargarCartaResponsiva("${id}")' style="padding: 12px 30px; font-size: 16px;">
                     📄 Descargar Carta Responsiva
-                </button>
-                ${database.asignaciones.some(a => a.colaboradorId === id && a.estado === 'Activa' && a.esTemporal) ? `
+                </button>` : ''}
+                ${asigTempDetalle.length > 0 ? `
                 <button class="btn btn-info carta-responsiva" onclick='descargarCartaTemporal("${id}")' style="padding: 12px 30px; font-size: 16px;">
                     ⏳ Descargar Carta Temporal
                 </button>` : ''}
@@ -919,7 +937,7 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
 
     showNotification('⏳ Preparando carta temporal...', 'success');
 
-    // Refrescar asignaciones desde Supabase
+    // Refrescar asignaciones temporales desde Supabase
     try {
         const { data: rows, error } = await supabaseClient
             .from('asignaciones')
@@ -929,7 +947,6 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
             .eq('es_temporal', true);
 
         if (!error && rows) {
-            // Reemplazar en caché las temporales activas de este colaborador
             database.asignaciones = database.asignaciones.filter(
                 a => !(a.colaboradorId === colaboradorId && a.estado === 'Activa' && a.esTemporal)
             );
@@ -939,7 +956,7 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
         console.warn('No se pudo refrescar desde Supabase, usando caché local:', e);
     }
 
-    // Filtrar asignaciones temporales activas (o solo una específica si se pasa el ID)
+    // Solo asignaciones temporales activas
     let asignacionesTemp = database.asignaciones.filter(a =>
         a.colaboradorId === colaboradorId && a.estado === 'Activa' && a.esTemporal
     );
@@ -952,220 +969,218 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
         return;
     }
 
-    // ── Generar PDF ────────────────────────────────────────────────────────
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+    function _generarPDFTemporal() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
 
-    const PW = 215.9;
-    const ML = 20;
-    const MR = 20;
-    const CW = PW - ML - MR;
+        const PW  = 215.9;
+        const PH  = 279.4;
+        const ML  = 20;
+        const MR  = 20;
+        const CW  = PW - ML - MR;
 
-    function setFont(style, size, color) {
-        doc.setFont('helvetica', style || 'normal');
-        doc.setFontSize(size || 10);
-        doc.setTextColor(...(color || [0, 0, 0]));
-    }
+        function setFont(style, size, color) {
+            doc.setFont('helvetica', style || 'normal');
+            doc.setFontSize(size || 10);
+            doc.setTextColor(...(color || [0, 0, 0]));
+        }
 
-    function centeredText(text, y, size, style) {
-        setFont(style || 'normal', size || 10);
-        doc.text(text, PW / 2, y, { align: 'center' });
-    }
+        function centeredText(text, y, size, style) {
+            setFont(style || 'normal', size || 10);
+            doc.text(text, PW / 2, y, { align: 'center' });
+        }
 
-    function wrappedText(text, x, y, maxW, lineH) {
-        const lines = doc.splitTextToSize(text, maxW);
-        doc.text(lines, x, y);
-        return y + lines.length * lineH;
-    }
+        function wrappedText(text, x, y, maxW, lineH) {
+            const lines = doc.splitTextToSize(text, maxW);
+            doc.text(lines, x, y);
+            return y + lines.length * lineH;
+        }
 
-    function sanitizeText(str) {
-        if (!str) return '';
-        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
-    }
+        function sanitizeText(str) {
+            if (!str) return '';
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+        }
 
-    // ── Encabezado ─────────────────────────────────────────────────────────
-    let y = 18;
+        // ── Título ─────────────────────────────────────────────────────────
+        let y = 18;
+        centeredText('CARTA RESPONSIVA DE EQUIPO', y, 16, 'bold');
+        y += 12;
 
-    // Franja amarilla de TEMPORAL
-    doc.setFillColor(253, 211, 77);
-    doc.rect(ML, y - 7, CW, 9, 'F');
-    setFont('bold', 11, [146, 64, 14]);
-    doc.text('ASIGNACION TEMPORAL DE EQUIPO', PW / 2, y - 1, { align: 'center' });
-    y += 7;
+        // ── Párrafo introductorio ──────────────────────────────────────────
+        setFont('normal', 12);
+        const _fechaAsigObj = asignacionesTemp[0] && asignacionesTemp[0].fechaAsignacion
+            ? _parseFechaSinDesfase(asignacionesTemp[0].fechaAsignacion)
+            : new Date();
+        const fechaAsig = _fechaAsigObj.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    centeredText('CARTA RESPONSIVA DE EQUIPO (TEMPORAL)', y, 16, 'bold');
-    y += 10;
+        y = wrappedText('Recibi del area de sistemas el equipo de computo que se menciona a continuacion;', ML, y, CW, 5);
+        y += 4;
 
-    // ── Párrafo introductorio ──────────────────────────────────────────────
-    setFont('normal', 12, [0, 0, 0]);
-    const fechaAsig = _parseFechaSinDesfase(asignacionesTemp[0].fechaAsignacion)
-        .toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+        // ── Tabla — solo equipos temporales ───────────────────────────────
+        const cols = [
+            { label: 'DISPOSITIVO',      w: CW * 0.18 },
+            { label: 'MARCA',            w: CW * 0.16 },
+            { label: 'MODELO',           w: CW * 0.22 },
+            { label: 'NUMERO DE SERIE',  w: CW * 0.24 },
+            { label: 'FECHA ASIGNACION', w: CW * 0.20 },
+        ];
+        const rowH  = 9;
+        const headH = 10;
 
-    const fechaFinStr = asignacionesTemp[0].fechaFinTemporal
-        ? _parseFechaSinDesfase(asignacionesTemp[0].fechaFinTemporal)
-            .toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
-        : 'fecha por definir';
+        function drawTableRow(yPos, valores, bgColor) {
+            let cx2 = ML;
+            cols.forEach(col => {
+                doc.setFillColor(...bgColor);
+                doc.setDrawColor(0, 0, 0);
+                doc.rect(cx2, yPos, col.w, rowH, 'FD');
+                cx2 += col.w;
+            });
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            cx2 = ML;
+            cols.forEach((col, ci) => {
+                if (valores[ci]) {
+                    const cell = doc.splitTextToSize(String(valores[ci]), col.w - 3);
+                    doc.text(cell, cx2 + col.w / 2, yPos + 5.5, { align: 'center' });
+                }
+                cx2 += col.w;
+            });
+        }
 
-    y = wrappedText(
-        'Recibo del area de sistemas el equipo de computo que se menciona a continuacion en calidad de PRESTAMO TEMPORAL:',
-        ML, y, CW, 5
-    );
-    y += 4;
-
-    // ── Tabla de equipos temporales ────────────────────────────────────────
-    const cols = [
-        { label: 'DISPOSITIVO',      w: CW * 0.18 },
-        { label: 'MARCA',            w: CW * 0.16 },
-        { label: 'MODELO',           w: CW * 0.22 },
-        { label: 'NUMERO DE SERIE',  w: CW * 0.24 },
-        { label: 'FECHA ASIGNACION', w: CW * 0.20 },
-    ];
-    const rowH  = 9;
-    const headH = 10;
-
-    function drawTableRow(yPos, valores, bgColor) {
-        let cx2 = ML;
-        cols.forEach(col => {
-            doc.setFillColor(...bgColor);
-            doc.setDrawColor(0, 0, 0);
-            doc.rect(cx2, yPos, col.w, rowH, 'FD');
-            cx2 += col.w;
-        });
+        // Cabecera azul — mismo estilo que carta normal
+        let cx = ML;
+        doc.setFillColor(180, 198, 231);
+        doc.setDrawColor(0, 0, 0);
+        cols.forEach(col => { doc.rect(cx, y, col.w, headH, 'FD'); cx += col.w; });
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        cx2 = ML;
-        cols.forEach((col, ci) => {
-            if (valores[ci]) {
-                const cell = doc.splitTextToSize(String(valores[ci]), col.w - 3);
-                doc.text(cell, cx2 + col.w / 2, yPos + 5.5, { align: 'center' });
-            }
-            cx2 += col.w;
+        doc.setFont('helvetica', 'bold');
+        cx = ML;
+        cols.forEach(col => {
+            const lines = doc.splitTextToSize(col.label, col.w - 2);
+            const textH = lines.length * 3.5;
+            doc.text(lines, cx + col.w / 2, y + (headH - textH) / 2 + 3.5, { align: 'center' });
+            cx += col.w;
         });
-    }
+        y += headH;
 
-    // Cabecera — fondo ámbar para distinguir de carta normal
-    let cx = ML;
-    doc.setFillColor(253, 211, 77);
-    doc.setDrawColor(0, 0, 0);
-    cols.forEach(col => { doc.rect(cx, y, col.w, headH, 'FD'); cx += col.w; });
-    doc.setTextColor(146, 64, 14);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    cx = ML;
-    cols.forEach(col => {
-        const lines = doc.splitTextToSize(col.label, col.w - 2);
-        const textH = lines.length * 3.5;
-        doc.text(lines, cx + col.w / 2, y + (headH - textH) / 2 + 3.5, { align: 'center' });
-        cx += col.w;
-    });
-    y += headH;
-
-    let filaIdx = 0;
-    asignacionesTemp.forEach(asig => {
-        const eq = database.equipos.find(e => e._id === asig.equipoId);
-        if (!eq) return;
-        const bg = filaIdx % 2 === 0 ? [255, 251, 235] : [255, 255, 255];
-        const fechaEq = _parseFechaSinDesfase(asig.fechaAsignacion)
-            .toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        drawTableRow(y, [eq.tipo || '', eq.marca || '', eq.modelo || '', eq.numSerie || '', fechaEq], bg);
-        y += rowH;
-        filaIdx++;
-    });
-
-    // Filas vacías hasta mínimo 3
-    while (filaIdx < 3) {
-        const bg = filaIdx % 2 === 0 ? [255, 251, 235] : [255, 255, 255];
-        drawTableRow(y, ['', '', '', '', ''], bg);
-        y += rowH;
-        filaIdx++;
-    }
-    y += 9;
-
-    // ── Texto legal ────────────────────────────────────────────────────────
-    setFont('normal', 12, [0, 0, 0]);
-    y = wrappedText(
-        'El cual pertenece a la empresa BYTETEK S.A. DE C.V. y me es entregado de manera TEMPORAL a partir del dia ' +
-        fechaAsig + ' con fecha estimada de devolucion el ' + fechaFinStr + '.',
-        ML, y, CW, 5
-    );
-    y += 6;
-
-    y = wrappedText(
-        'Me comprometo a cuidar, mantener en buen estado y utilizarlo unica y exclusivamente para asuntos relacionados con mi actividad laboral durante el periodo de prestamo.',
-        ML, y, CW, 5
-    );
-    y += 6;
-
-    y = wrappedText(
-        'Asimismo, no podre modificar la configuracion del equipo ni instalar software sin ser previamente autorizado. Al termino del periodo, me comprometo a devolver el equipo en las mismas condiciones en que me fue entregado.',
-        ML, y, CW, 5
-    );
-    y += 6;
-
-    y = wrappedText(
-        'En caso de su extravio, dano o uso inadecuado, me responsabilizo a pagar el costo de la reposicion del equipo.',
-        ML, y, CW, 5
-    );
-    y += 14;
-
-    // ── Bloques de firma 2×2 ───────────────────────────────────────────────
-    const SIGN_W = CW / 2 - 10;
-    const SIGN_H = 30;
-    const nombreColSafe  = sanitizeText(colaborador.nombre  || '');
-    const puestoColSafe  = sanitizeText(colaborador.puesto  || '');
-    const deptColSafe    = sanitizeText(colaborador.departamento || '');
-
-    const bloques = [
-        { titulo: 'COLABORADOR',        nombre: nombreColSafe, sub: puestoColSafe },
-        { titulo: 'JEFE INMEDIATO',      nombre: '',            sub: '' },
-        { titulo: 'AREA DE SISTEMAS',    nombre: '',            sub: '' },
-        { titulo: 'RECURSOS HUMANOS',    nombre: '',            sub: '' },
-    ];
-
-    if (y + SIGN_H * 2 + 30 > 265) {
-        doc.addPage();
-        y = 20;
-    }
-
-    const cols2 = [
-        { x: ML,                    label: bloques[0] },
-        { x: ML + SIGN_W + 20,      label: bloques[1] },
-    ];
-    const cols3 = [
-        { x: ML,                    label: bloques[2] },
-        { x: ML + SIGN_W + 20,      label: bloques[3] },
-    ];
-
-    [[cols2, y], [cols3, y + SIGN_H + 20]].forEach(([row, ry]) => {
-        row.forEach(({ x, label }) => {
-            doc.setDrawColor(180, 180, 180);
-            doc.line(x, ry + SIGN_H - 5, x + SIGN_W, ry + SIGN_H - 5);
-            setFont('bold', 9, [0, 0, 0]);
-            doc.text(label.titulo, x + SIGN_W / 2, ry + SIGN_H + 2, { align: 'center' });
-            if (label.nombre) {
-                setFont('normal', 9);
-                doc.text(label.nombre, x + SIGN_W / 2, ry + SIGN_H + 7, { align: 'center' });
-            }
-            if (label.sub) {
-                setFont('normal', 8, [100, 116, 139]);
-                doc.text(label.sub, x + SIGN_W / 2, ry + SIGN_H + 12, { align: 'center' });
-            }
+        let filaIdx = 0;
+        asignacionesTemp.forEach(asig => {
+            const eq = database.equipos.find(e => e._id === asig.equipoId);
+            if (!eq) return;
+            const bg = filaIdx % 2 === 0 ? [245, 245, 245] : [255, 255, 255];
+            const fechaEq = asig.fechaAsignacion
+                ? _parseFechaSinDesfase(asig.fechaAsignacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                : '';
+            drawTableRow(y, [eq.tipo || '', eq.marca || '', eq.modelo || '', eq.numSerie || '', fechaEq], bg);
+            y += rowH;
+            filaIdx++;
         });
-    });
 
-    y += SIGN_H * 2 + 30;
+        const filasMin = 3;
+        while (filaIdx < filasMin) {
+            const bg = filaIdx % 2 === 0 ? [245, 245, 245] : [255, 255, 255];
+            drawTableRow(y, ['', '', '', '', ''], bg);
+            y += rowH;
+            filaIdx++;
+        }
+        y += 9;
 
-    // ── Pie de página ──────────────────────────────────────────────────────
-    setFont('normal', 8, [148, 163, 184]);
-    doc.text(
-        'Carta Responsiva Temporal — ' + sanitizeText(colaborador.nombre) +
-        ' — Generada: ' + new Date().toLocaleDateString('es-MX'),
-        PW / 2, 270, { align: 'center' }
-    );
+        // ── Texto legal — machote completo con cláusula temporal ───────────
+        setFont('normal', 12, [0, 0, 0]);
+        y = wrappedText(
+            'El cual pertenece a la empresa BYTETEK S.A. DE C.V. a partir del dia ' + fechaAsig + '. Me comprometo a cuidar, mantener en buen estado y utilizarlos unica y exclusivamente para asuntos relacionados con mi actividad laboral.',
+            ML, y, CW, 5
+        );
+        y += 6;
 
-    const nombreArchivo = 'CartaTemporal_' + colaborador.nombre.replace(/\s+/g, '_') +
-        '_' + new Date().toISOString().split('T')[0] + '.pdf';
-    doc.save(nombreArchivo);
-    showNotification('✅ Carta temporal descargada como PDF', 'success');
+        y = wrappedText(
+            'Asimismo, no podre modificar la configuracion del equipo ni instalar software sin ser previamente autorizado.',
+            ML, y, CW, 5
+        );
+        y += 6;
+
+        y = wrappedText(
+            'En caso de su extravio, dano o uso inadecuado, me responsabilizo a pagar el costo de la reposicion de equipo.',
+            ML, y, CW, 5
+        );
+        y += 6;
+
+        y = wrappedText(
+            'El equipo proporcionado por la empresa sera de caracter temporal y estara sujeto a devolucion cuando asi se requiera.',
+            ML, y, CW, 5
+        );
+        y += 14;
+
+        // ── Bloques de firma 2×2 — idénticos a carta normal ───────────────
+        const ceoCandidato = database.colaboradores.find(c =>
+            (c.departamento || '').trim().toUpperCase() === 'CEO'
+        );
+        const ceoNombre = sanitizeText(ceoCandidato ? ceoCandidato.nombre : '');
+
+        const jefeTexto = colaborador.jefeInmediato || '';
+        const jefeCandidato = database.colaboradores.find(c =>
+            c.nombre && c.nombre.trim().toLowerCase() === jefeTexto.trim().toLowerCase()
+        );
+        const jefeNombre = sanitizeText(jefeCandidato ? jefeCandidato.nombre : jefeTexto);
+
+        const firmas     = ['SISTEMAS', 'COLABORADOR', 'CEO', 'JEFE INMEDIATO'];
+        const subNombres = ['', sanitizeText(colaborador.nombre), ceoNombre, jefeNombre];
+
+        const bW  = CW / 2 - 5;
+        const bH  = 50;
+        const gap = 10;
+
+        if (y + bH * 2 + 15 > PH - 15) {
+            doc.addPage();
+            y = 20;
+        }
+
+        [[0, 1], [2, 3]].forEach(([li, ri], rowIdx) => {
+            const bY = y + rowIdx * (bH + 5);
+            [li, ri].forEach((fi, ci) => {
+                const bX = ML + ci * (bW + gap);
+                doc.setDrawColor(0);
+                doc.setFillColor(255, 255, 255);
+                doc.rect(bX, bY, bW, bH);
+
+                const lineY = bY + bH - 18;
+                doc.setDrawColor(80, 80, 80);
+                doc.line(bX + 10, lineY, bX + bW - 10, lineY);
+
+                setFont('bold', 10, [0, 0, 0]);
+                doc.text(firmas[fi], bX + bW / 2, bY + bH - 10, { align: 'center' });
+
+                if (subNombres[fi]) {
+                    setFont('normal', 8, [80, 80, 80]);
+                    const lines = doc.splitTextToSize(subNombres[fi], bW - 8);
+                    doc.text(lines, bX + bW / 2, bY + bH - 3, { align: 'center' });
+                }
+            });
+        });
+
+        // ── Pie de página ──────────────────────────────────────────────────
+        setFont('normal', 7, [150, 150, 150]);
+        doc.text(
+            'Generado: ' + new Date().toLocaleString('es-MX') + ' · Sistema de Inventario BYTETEK',
+            PW / 2, PH - 10, { align: 'center' }
+        );
+
+        const nombreArchivo = 'CartaTemporal_' + colaborador.nombre.replace(/\s+/g, '_') +
+            '_' + new Date().toISOString().split('T')[0] + '.pdf';
+        doc.save(nombreArchivo);
+        showNotification('✅ Carta temporal descargada como PDF', 'success');
+    }
+
+    // Mismo patrón de carga lazy que descargarCartaResponsiva
+    if (window.jspdf) {
+        _generarPDFTemporal();
+    } else {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.onload = _generarPDFTemporal;
+        script.onerror = () => showNotification('❌ No se pudo cargar la libreria de PDF', 'error');
+        document.head.appendChild(script);
+    }
 }
