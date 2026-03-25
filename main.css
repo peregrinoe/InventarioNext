@@ -167,15 +167,18 @@ body.light-mode [style*="background:#fef3c7"],
 body.light-mode [style*="background: #fef3c7"] {
     background: rgba(217,119,6,0.07) !important;
     border-color: rgba(217,119,6,0.2) !important;
+    color: var(--accent-warning) !important;
 }
 body.light-mode [style*="background:#dbeafe"],
 body.light-mode [style*="background: #dbeafe"] {
     background: rgba(37,99,235,0.07) !important;
+    border-color: rgba(37,99,235,0.2) !important;
     color: var(--accent-primary) !important;
 }
 body.light-mode [style*="background:#fef2f2"],
 body.light-mode [style*="background: #fef2f2"] {
     background: rgba(220,38,38,0.07) !important;
+    border-color: rgba(220,38,38,0.2) !important;
     color: var(--accent-danger) !important;
 }
 body.light-mode [style*="background:#f0fdf4"],
@@ -1111,7 +1114,7 @@ tbody tr:last-child td { border-bottom: none; }
 #dashboardAlertas > div[style*="#dbeafe"] {
     background: var(--accent-primary-bg) !important;
     border-color: rgba(59,130,246,0.2) !important;
-    color: #60a5fa !important;
+    color: var(--accent-primary) !important;
 }
 
 /* Table section h3 */
@@ -1180,7 +1183,7 @@ h3[style*="margin:25px 0 12px 0"] {
 [style*="background:#dbeafe"] {
     background: var(--accent-primary-bg) !important;
     border-radius: var(--radius-md) !important;
-    color: #93c5fd !important;
+    color: var(--accent-primary) !important;
 }
 
 [style*="background:#fef2f2"],
@@ -1188,7 +1191,7 @@ h3[style*="margin:25px 0 12px 0"] {
     background: var(--accent-danger-bg) !important;
     border-color: rgba(239,68,68,0.2) !important;
     border-radius: var(--radius-md) !important;
-    color: #fca5a5 !important;
+    color: var(--accent-danger) !important;
 }
 
 [style*="background:#f0fdf4"],
@@ -1404,28 +1407,177 @@ td img[style*="border-radius:50%"] {
     border: 2px solid var(--border-default) !important;
 }
 
-/* Detail modal content backgrounds */
-#detalleColaboradorContent [style*="background"],
-#detalleEquipoContent [style*="background"],
-#detalleCelularContent [style*="background"],
-#detalleLicenciaContent [style*="background"] {
+/* Detail modal content backgrounds — preserve gradient headers */
+#detalleColaboradorContent [style*="background"]:not([style*="gradient"]),
+#detalleEquipoContent [style*="background"]:not([style*="gradient"]),
+#detalleCelularContent [style*="background"]:not([style*="gradient"]),
+#detalleLicenciaContent [style*="background"]:not([style*="gradient"]) {
     background: var(--bg-elevated) !important;
     border-color: var(--border-subtle) !important;
     color: var(--text-primary) !important;
     border-radius: var(--radius-md) !important;
 }
 
-/* Bajas content */
-#bajasContenido [style*="background"],
+/* Bajas content — strip dark-inappropriate white backgrounds, keep structure */
 #bajasContenido table,
 #bajasContenido th,
 #bajasContenido td {
     background: transparent !important;
 }
+/* In dark mode strip white card backgrounds; in light mode keep them */
+body:not(.light-mode) #bajasContenido [style*="background:white"],
+body:not(.light-mode) #bajasContenido [style*="background: white"],
+body:not(.light-mode) #bajasContenido [style*="background:#fff"],
+body:not(.light-mode) #bajasContenido [style*="background: #fff"],
+body:not(.light-mode) #bajasContenido [style*="background:#ffffff"],
+body:not(.light-mode) #bajasContenido [style*="background: #ffffff"] {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border-default) !important;
+}
+body:not(.light-mode) #bajasContenido [style*="background:#f8fafc"],
+body:not(.light-mode) #bajasContenido [style*="background: #f8fafc"] {
+    background: var(--bg-surface) !important;
+}
 
 /* ═══════════════════════════════════════════════════
    SMALL UTILITIES
 ═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════
+   GLOBAL INLINE-COLOR OVERRIDES
+   (JS-generated content with hardcoded light-theme colors)
+═══════════════════════════════════════════════════ */
+
+/* Dark-theme colors used in JS: override so they're readable in both modes */
+[style*="color:#92400e"],
+[style*="color: #92400e"] { color: var(--accent-warning) !important; }
+
+[style*="color:#991b1b"],
+[style*="color: #991b1b"] { color: var(--accent-danger) !important; }
+
+[style*="color:#1e40af"],
+[style*="color: #1e40af"] { color: var(--accent-primary) !important; }
+
+[style*="color:#065f46"],
+[style*="color: #065f46"] { color: var(--accent-success) !important; }
+
+[style*="color:#14532d"],
+[style*="color: #14532d"] { color: var(--accent-success) !important; }
+
+/* Background #f1f5f9 (location badge, preview placeholder) */
+[style*="background:#f1f5f9"],
+[style*="background: #f1f5f9"] {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Inactive row (opacity:0.6 + background:#fafafa) */
+[style*="background:#fafafa"],
+[style*="background: #fafafa"] {
+    background: rgba(255,255,255,0.025) !important;
+}
+
+/* Section divider borders hardcoded to #e2e8f0 */
+[style*="border-bottom: 2px solid #e2e8f0"],
+[style*="border-bottom:2px solid #e2e8f0"] {
+    border-bottom-color: var(--border-default) !important;
+}
+
+/* Inline white/light borders on cards */
+[style*="border: 1px solid #e2e8f0"],
+[style*="border:1px solid #e2e8f0"] {
+    border-color: var(--border-default) !important;
+}
+[style*="border: 2px solid #e2e8f0"],
+[style*="border:2px solid #e2e8f0"] {
+    border-color: var(--border-default) !important;
+}
+[style*="border: 2px dashed #cbd5e0"],
+[style*="border:2px dashed #cbd5e0"] {
+    border-color: var(--border-default) !important;
+}
+
+/* ── background:white / background:#fff in non-modal contexts ─────────────── */
+/* Any white card that is NOT inside a detail modal is handled here */
+body:not(.light-mode) [style*="background:white"]:not(#detalleColaboradorContent *):not(#detalleEquipoContent *):not(#detalleCelularContent *):not(#detalleLicenciaContent *),
+body:not(.light-mode) [style*="background: white"]:not(#detalleColaboradorContent *):not(#detalleEquipoContent *):not(#detalleCelularContent *):not(#detalleLicenciaContent *) {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border-default) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Light mode: white text elements in detail modals (safety net) ────────── */
+/* After Fix 2 (gradient preserved), these only apply to edge cases */
+body.light-mode #detalleColaboradorContent [style*="color: white"]:not([style*="gradient"]),
+body.light-mode #detalleColaboradorContent [style*="color:white"]:not([style*="gradient"]),
+body.light-mode #detalleEquipoContent [style*="color: white"]:not([style*="gradient"]),
+body.light-mode #detalleEquipoContent [style*="color:white"]:not([style*="gradient"]),
+body.light-mode #detalleCelularContent [style*="color: white"]:not([style*="gradient"]),
+body.light-mode #detalleCelularContent [style*="color:white"]:not([style*="gradient"]),
+body.light-mode #detalleLicenciaContent [style*="color: white"]:not([style*="gradient"]),
+body.light-mode #detalleLicenciaContent [style*="color:white"]:not([style*="gradient"]) {
+    color: var(--text-primary) !important;
+}
+
+/* rgba(255,255,255,X) — near-white text in detail modals in light mode */
+body.light-mode #detalleColaboradorContent [style*="color: rgba(255,255,255"],
+body.light-mode #detalleColaboradorContent [style*="color:rgba(255,255,255"],
+body.light-mode #detalleEquipoContent [style*="color: rgba(255,255,255"],
+body.light-mode #detalleEquipoContent [style*="color:rgba(255,255,255"],
+body.light-mode #detalleCelularContent [style*="color: rgba(255,255,255"],
+body.light-mode #detalleCelularContent [style*="color:rgba(255,255,255"] {
+    color: var(--text-secondary) !important;
+}
+
+/* ── Light mode: bajas cards use proper backgrounds ──────────────────────── */
+body.light-mode #bajasContenido [style*="background:white"],
+body.light-mode #bajasContenido [style*="background: white"] {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-default) !important;
+}
+body.light-mode #bajasContenido [style*="background:#f8fafc"],
+body.light-mode #bajasContenido [style*="background: #f8fafc"] {
+    background: var(--bg-elevated) !important;
+}
+
+/* ── Light mode: bajas table headers/cells need explicit colors ───────────── */
+body.light-mode #bajasContenido th {
+    background: var(--bg-elevated) !important;
+    color: var(--text-secondary) !important;
+}
+body.light-mode #bajasContenido td {
+    color: var(--text-primary) !important;
+}
+
+/* ── Light mode: inline selects inside bajas/modal use proper bg ─────────── */
+body.light-mode [style*="background:white"][style*="border"],
+body.light-mode [style*="background: white"][style*="border"] {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-default) !important;
+}
+
+/* ── Dark mode: inline colored detail cards (background:white in JS) ──────── */
+body:not(.light-mode) #detalleColaboradorContent [style*="background:white"],
+body:not(.light-mode) #detalleColaboradorContent [style*="background: white"],
+body:not(.light-mode) #detalleEquipoContent [style*="background:white"],
+body:not(.light-mode) #detalleEquipoContent [style*="background: white"],
+body:not(.light-mode) #detalleCelularContent [style*="background:white"],
+body:not(.light-mode) #detalleCelularContent [style*="background: white"],
+body:not(.light-mode) #detalleLicenciaContent [style*="background:white"],
+body:not(.light-mode) #detalleLicenciaContent [style*="background: white"] {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Colored gradient banners in bajas cards (pendiente/aprobada) ─────────── */
+body.light-mode #bajasContenido [style*="background:linear-gradient"],
+body.light-mode #bajasContenido [style*="background: linear-gradient"] {
+    /* Preserve gradient, white text on gradient is fine */
+}
+
+
 small { color: var(--text-secondary) !important; font-size: 11px; }
 
 strong { color: var(--text-primary); }
