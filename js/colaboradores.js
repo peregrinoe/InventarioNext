@@ -1003,11 +1003,11 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
 
         // ── Título ─────────────────────────────────────────────────────────
         let y = 18;
-        centeredText('CARTA RESPONSIVA DE EQUIPO', y, 16, 'bold');
+        centeredText('CARTA RESPONSIVA DE EQUIPO TEMPORAL', y, 15, 'bold');
         y += 12;
 
         // ── Párrafo introductorio ──────────────────────────────────────────
-        setFont('normal', 12);
+        setFont('normal', 11);
         const _fechaAsigObj = asignacionesTemp[0] && asignacionesTemp[0].fechaAsignacion
             ? _parseFechaSinDesfase(asignacionesTemp[0].fechaAsignacion)
             : new Date();
@@ -1024,8 +1024,8 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
             { label: 'NUMERO DE SERIE',  w: CW * 0.24 },
             { label: 'FECHA ASIGNACION', w: CW * 0.20 },
         ];
-        const rowH  = 9;
-        const headH = 10;
+        const rowH  = 8;
+        const headH = 9;
 
         function drawTableRow(yPos, valores, bgColor) {
             let cx2 = ML;
@@ -1036,7 +1036,7 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
                 cx2 += col.w;
             });
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(8);
+            doc.setFontSize(7);
             doc.setFont('helvetica', 'normal');
             cx2 = ML;
             cols.forEach((col, ci) => {
@@ -1088,28 +1088,28 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
         y += 9;
 
         // ── Texto legal — machote completo con cláusula temporal ───────────
-        setFont('normal', 12, [0, 0, 0]);
+        setFont('normal', 11, [0, 0, 0]);
         y = wrappedText(
             'El cual pertenece a la empresa BYTETEK S.A. DE C.V. a partir del dia ' + fechaAsig + '. Me comprometo a cuidar, mantener en buen estado y utilizarlos unica y exclusivamente para asuntos relacionados con mi actividad laboral.',
-            ML, y, CW, 5
+            ML, y, CW, 3
         );
         y += 6;
 
         y = wrappedText(
             'Asimismo, no podre modificar la configuracion del equipo ni instalar software sin ser previamente autorizado.',
-            ML, y, CW, 5
+            ML, y, CW, 3
         );
         y += 6;
 
         y = wrappedText(
             'En caso de su extravio, dano o uso inadecuado, me responsabilizo a pagar el costo de la reposicion de equipo.',
-            ML, y, CW, 5
+            ML, y, CW, 3
         );
         y += 6;
 
         y = wrappedText(
             'El equipo proporcionado por la empresa sera de caracter temporal y estara sujeto a devolucion cuando asi se requiera.',
-            ML, y, CW, 5
+            ML, y, CW, 3
         );
         y += 14;
 
@@ -1146,14 +1146,14 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
                 doc.rect(bX, bY, bW, bH);
 
                 const lineY = bY + bH - 18;
-                doc.setDrawColor(80, 80, 80);
+                doc.setDrawColor(70, 70, 70);
                 doc.line(bX + 10, lineY, bX + bW - 10, lineY);
 
-                setFont('bold', 10, [0, 0, 0]);
+                setFont('bold', 9, [0, 0, 0]);
                 doc.text(firmas[fi], bX + bW / 2, bY + bH - 10, { align: 'center' });
 
                 if (subNombres[fi]) {
-                    setFont('normal', 8, [80, 80, 80]);
+                    setFont('normal', 7, [70, 70, 70]);
                     const lines = doc.splitTextToSize(subNombres[fi], bW - 8);
                     doc.text(lines, bX + bW / 2, bY + bH - 3, { align: 'center' });
                 }
@@ -1161,7 +1161,7 @@ async function descargarCartaTemporal(colaboradorId, asignacionIdFiltro) {
         });
 
         // ── Pie de página ──────────────────────────────────────────────────
-        setFont('normal', 7, [150, 150, 150]);
+        setFont('normal', 6, [150, 150, 150]);
         doc.text(
             'Generado: ' + new Date().toLocaleString('es-MX') + ' · Sistema de Inventario BYTETEK',
             PW / 2, PH - 10, { align: 'center' }

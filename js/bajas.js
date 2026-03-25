@@ -387,7 +387,9 @@ function _abrirModalConfirmacionBaja(colaboradorId, solicitudId) {
                     ${otrosColaboradores.map(c => `<option value="${c._id}">${c.nombre} · ${c.departamento || ''}</option>`).join('')}
                     <option value="__almacen__">🏭 Regresar al almacén (sin asignar)</option>
                 </select>
-                <p style="font-size:0.8em;color:#94a3b8;margin-top:4px;">Este registro quedará guardado en el historial de bajas. La reasignación será de carácter temporal.</p>
+                <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:0.82em;color:#92400e;">
+                    ⏳ <strong>La reasignación siempre es temporal</strong> — el receptor recibirá el equipo en préstamo hasta asignación definitiva. Se generará una carta responsiva <em>temporal</em> pendiente a su nombre, independientemente de si ya tenía equipos previos.
+                </div>
             </div>
         `;
     } else {
@@ -458,7 +460,7 @@ async function confirmarBaja() {
                     await upsertEquipo(eq);
                 }
 
-                // Si hay receptor (colaborador), crear nueva asignación
+                // Si hay receptor, SIEMPRE crear asignación temporal por baja
                 if (receptorId) {
                     const nuevaAsig = {
                         _id:             'ASIG' + Date.now() + Math.random().toString(36).substr(2,4),
@@ -467,8 +469,8 @@ async function confirmarBaja() {
                         fechaAsignacion: _fechaLocalHoy(),
                         fechaDevolucion: null,
                         estado:          'Activa',
-                        notas:           `Reasignado desde baja de ${col.nombre}`,
-                        esTemporal:      false,
+                        notas:           `⏳ Reasignación temporal por baja de ${col.nombre}`,
+                        esTemporal:      true,
                         fechaFinTemporal: null
                     };
                     await upsertAsignacion(nuevaAsig);
@@ -476,6 +478,12 @@ async function confirmarBaja() {
                     if (eq) {
                         eq.estado = 'Asignado';
                         await upsertEquipo(eq);
+                    }
+                    // Carta del receptor: pendiente (temporal), sin importar estado previo
+                    const receptor = database.colaboradores.find(c => c._id === receptorId);
+                    if (receptor) {
+                        receptor.cartaEstado = 'pendiente';
+                        await upsertColaborador(receptor);
                     }
                 }
             }
@@ -499,13 +507,21 @@ async function confirmarBaja() {
                         fechaAsignacion: _fechaLocalHoy(),
                         fechaDevolucion: null,
                         estado:          'Activa',
-                        notas:           `Reasignado desde baja de ${col.nombre}`
+                        notas:           `⏳ Reasignación temporal por baja de ${col.nombre}`,
+                        esTemporal:      true,
+                        fechaFinTemporal: null
                     };
                     await upsertAsignacionCelular(nuevaAsig);
                     database.asignacionesCelulares.push(nuevaAsig);
                     if (cel) {
                         cel.estado = 'Asignado';
                         await upsertCelular(cel);
+                    }
+                    // Carta del receptor: pendiente (temporal) si no ya fue marcada
+                    const receptorCel = database.colaboradores.find(c => c._id === receptorId);
+                    if (receptorCel && receptorCel.cartaEstado !== 'pendiente') {
+                        receptorCel.cartaEstado = 'pendiente';
+                        await upsertColaborador(receptorCel);
                     }
                 }
             }
