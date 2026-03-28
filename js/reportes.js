@@ -192,33 +192,390 @@ function generarReporteEquipos() {
     showNotification('✅ Reporte de equipos descargado', 'success');
 }
 
-// Reporte de Colaboradores
+// ============================================
+// REPORTE DE COLABORADORES — VERSIÓN DETALLADA
+// Hojas: Resumen | Internos | Externos |
+//        Equipos por Colaborador | Celulares por Colaborador |
+//        Licencias por Colaborador | Historial de Asignaciones |
+//        Sin Activos Asignados
+// ============================================
 function generarReporteColaboradores() {
     const wb = crearLibroExcel();
-    
-    const colaboradoresData = database.colaboradores.map(col => {
-        const equiposAsignados = database.asignaciones.filter(a => a.colaboradorId === col._id && a.estado === 'Activa');
-        const licenciasAsignadas = database.licenciasAsignaciones ? database.licenciasAsignaciones.filter(la => la.colaboradorId === col._id) : [];
-        
+    const hoy = new Date();
+    const fmt  = d => d ? new Date(d).toLocaleDateString('es-MX') : '';
+    const fmtTs = d => d ? new Date(d).toLocaleString('es-MX') : '';
+
+    // ─── helpers ────────────────────────────────────────────────────────────
+
+    /** Devuelve los días transcurridos desde una fecha (o '' si no hay fecha). */
+    function diasDesde(fechaStr) {
+        if (!fechaStr) return '';
+        const d = new Date(fechaStr);
+        return isNaN(d) ? '' : Math.floor((hoy - d) / 86400000);
+    }
+
+    /** Construye el perfil completo de un colaborador. */
+    function buildFilaColaborador(col) {
+        const asigEquiposActivos  = database.asignaciones.filter(a => a.colaboradorId === col._id && a.estado === 'Activa');
+        const asigCelularesActivos = (database.asignacionesCelulares || []).filter(a => a.colaboradorId === col._id && a.estado === 'Activa');
+        const licenciasAsig       = (database.licenciasAsignaciones  || []).filter(la => la.colaboradorId === col._id);
+
+        // Nombres de equipos activos (join con "|" para una sola celda)
+        const nombresEquipos = asigEquiposActivos.map(a => {
+            const eq = database.equipos.find(e => e._id === a.equipoId);
+            return eq ? `${eq.marca} ${eq.modelo} [${eq.numSerie || 'S/N'}]` : '';
+        }).filter(Boolean).join(' | ');
+
+        // Tipos de equipos
+        const tiposEquipos = asigEquiposActivos.map(a => {
+            const eq = database.equipos.find(e => e._id === a.equipoId);
+            return eq ? eq.tipo : '';
+        }).filter(Boolean).join(' | ');
+
+        // Categorías de equipos
+        const categoriasEquipos = asigEquiposActivos.map(a => {
+            const eq = database.equipos.find(e => e._id === a.equipoId);
+            return eq && eq.categoria ? `Cat.${eq.categoria}` : '';
+        }).filter(Boolean).join(' | ');
+
+        // Celulares activos
+        const nombresCelulares = asigCelularesActivos.map(a => {
+            const cel = database.celulares.find(c => c._id === a.celularId);
+            return cel ? `${cel.marca} ${cel.modelo} [IMEI:${cel.imei || 'S/IMEI'}]` : '';
+        }).filter(Boolean).join(' | ');
+
+        // Planes y compañías de celulares
+        const planesCelulares = asigCelularesActivos.map(a => {
+            const cel = database.celulares.find(c => c._id === a.celularId);
+            return cel ? `${cel.companiaMovil || ''} ${cel.plan ? '- ' + cel.plan : ''}`.trim() : '';
+        }).filter(Boolean).join(' | ');
+
+        // Licencias
+        const nombresLicencias = licenciasAsig.map(la => {
+            const lic = database.licencias.find(l => l._id === la.licenciaId);
+            return lic ? lic.software : '';
+        }).filter(Boolean).join(' | ');
+
+        // Estado global de activos
+        const tieneActivos = asigEquiposActivos.length > 0 || asigCelularesActivos.length > 0;
+        const cartaLabel = col.cartaEstado === 'completa' ? 'Completa' : tieneActivos ? 'Pendiente de firma' : 'N/A';
+
+        // Antigüedad en años
+        let antiguedad = '';
+        if (col.fechaIngreso) {
+            const meses = Math.floor((hoy - new Date(col.fechaIngreso)) / (30.44 * 86400000));
+            antiguedad = meses >= 12
+                ? `${Math.floor(meses / 12)} año(s) ${meses % 12} mes(es)`
+                : `${meses} mes(es)`;
+        }
+
         return {
-            'Nombre Completo': col.nombre,
-            'Email Corporativo': col.email,
-            'Teléfono': col.telefono || '',
-            'Departamento': col.departamento,
-            'Puesto': col.puesto,
-            'Fecha de Ingreso': col.fechaIngreso ? new Date(col.fechaIngreso).toLocaleDateString() : '',
-            'Jefe Inmediato': col.jefeInmediato || '',
-            'Equipos Asignados': equiposAsignados.length,
-            'Licencias Asignadas': licenciasAsignadas.length,
-            'Estado': equiposAsignados.length > 0 ? 'Activo con Equipos' : 'Sin Equipos'
+            // Datos personales
+            'Nombre Completo':          col.nombre,
+            'Tipo':                     col.esExterno ? 'Externo' : 'Interno',
+            'Estado':                   col.esActivo !== false ? 'Activo' : 'Inactivo',
+            'Email':                    col.email,
+            'Teléfono':                 col.telefono || '',
+            'Departamento':             col.departamento || '',
+            'Puesto':                   col.puesto || '',
+            'Jefe Inmediato':           col.jefeInmediato || '',
+            'Fecha de Ingreso':         fmt(col.fechaIngreso),
+            'Antigüedad':               antiguedad,
+
+            // Activos — Equipos
+            'No. Equipos Asignados':    asigEquiposActivos.length,
+            'Equipos Asignados':        nombresEquipos || 'Sin equipos',
+            'Tipos de Equipo':          tiposEquipos   || '',
+            'Categorías':               categoriasEquipos || '',
+
+            // Activos — Celulares
+            'No. Celulares Asignados':  asigCelularesActivos.length,
+            'Celulares Asignados':      nombresCelulares || 'Sin celulares',
+            'Plan/Compañía':            planesCelulares  || '',
+
+            // Activos — Licencias
+            'No. Licencias Asignadas':  licenciasAsig.length,
+            'Licencias de Software':    nombresLicencias || 'Sin licencias',
+
+            // Carta responsiva
+            'Carta Responsiva':         cartaLabel,
         };
+    }
+
+    // ─── Hoja 1: Resumen ejecutivo ───────────────────────────────────────────
+    const todos          = database.colaboradores;
+    const activos        = todos.filter(c => c.esActivo !== false);
+    const internos       = todos.filter(c => !c.esExterno);
+    const externos       = todos.filter(c => c.esExterno);
+    const activosInt     = internos.filter(c => c.esActivo !== false);
+    const activosExt     = externos.filter(c => c.esActivo !== false);
+    const conEquipo      = activos.filter(c => database.asignaciones.some(a => a.colaboradorId === c._id && a.estado === 'Activa'));
+    const conCelular     = activos.filter(c => (database.asignacionesCelulares || []).some(a => a.colaboradorId === c._id && a.estado === 'Activa'));
+    const conLicencia    = activos.filter(c => (database.licenciasAsignaciones || []).some(la => la.colaboradorId === c._id));
+    const sinNada        = activos.filter(c =>
+        !database.asignaciones.some(a => a.colaboradorId === c._id && a.estado === 'Activa') &&
+        !(database.asignacionesCelulares || []).some(a => a.colaboradorId === c._id && a.estado === 'Activa')
+    );
+    const cartaCompleta  = activos.filter(c => c.cartaEstado === 'completa' && database.asignaciones.some(a => a.colaboradorId === c._id && a.estado === 'Activa'));
+    const cartaPendiente = activos.filter(c => c.cartaEstado !== 'completa' && database.asignaciones.some(a => a.colaboradorId === c._id && a.estado === 'Activa'));
+
+    const resumenData = [
+        { 'Indicador': 'Total colaboradores',                'Internos': internos.length,    'Externos': externos.length,    'Total': todos.length },
+        { 'Indicador': 'Colaboradores activos',              'Internos': activosInt.length,  'Externos': activosExt.length,  'Total': activos.length },
+        { 'Indicador': 'Colaboradores inactivos (dados de baja)', 'Internos': internos.length - activosInt.length, 'Externos': externos.length - activosExt.length, 'Total': todos.length - activos.length },
+        { 'Indicador': '─────────────────────────────', 'Internos': '', 'Externos': '', 'Total': '' },
+        { 'Indicador': 'Con equipo asignado',                'Internos': conEquipo.filter(c => !c.esExterno).length,   'Externos': conEquipo.filter(c => c.esExterno).length,   'Total': conEquipo.length },
+        { 'Indicador': 'Con celular asignado',               'Internos': conCelular.filter(c => !c.esExterno).length,  'Externos': conCelular.filter(c => c.esExterno).length,  'Total': conCelular.length },
+        { 'Indicador': 'Con licencias asignadas',            'Internos': conLicencia.filter(c => !c.esExterno).length, 'Externos': conLicencia.filter(c => c.esExterno).length, 'Total': conLicencia.length },
+        { 'Indicador': 'Sin ningún activo asignado',         'Internos': sinNada.filter(c => !c.esExterno).length,     'Externos': sinNada.filter(c => c.esExterno).length,     'Total': sinNada.length },
+        { 'Indicador': '─────────────────────────────', 'Internos': '', 'Externos': '', 'Total': '' },
+        { 'Indicador': 'Carta responsiva completa',          'Internos': cartaCompleta.filter(c => !c.esExterno).length,  'Externos': cartaCompleta.filter(c => c.esExterno).length,  'Total': cartaCompleta.length },
+        { 'Indicador': 'Carta responsiva pendiente',         'Internos': cartaPendiente.filter(c => !c.esExterno).length, 'Externos': cartaPendiente.filter(c => c.esExterno).length, 'Total': cartaPendiente.length },
+        { 'Indicador': '─────────────────────────────', 'Internos': '', 'Externos': '', 'Total': '' },
+        { 'Indicador': `Reporte generado el ${hoy.toLocaleString('es-MX')}`, 'Internos': '', 'Externos': '', 'Total': '' },
+    ];
+    agregarHoja(wb, '📊 Resumen', resumenData);
+
+    // ─── Hoja 2: Colaboradores Internos ─────────────────────────────────────
+    const filasInternos = internos
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .map(buildFilaColaborador);
+    agregarHoja(wb, '🏢 Internos', filasInternos);
+
+    // ─── Hoja 3: Colaboradores Externos ─────────────────────────────────────
+    const filasExternos = externos
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .map(buildFilaColaborador);
+    if (filasExternos.length > 0) {
+        agregarHoja(wb, '🌐 Externos', filasExternos);
+    }
+
+    // ─── Hoja 4: Detalle de Equipos por Colaborador ──────────────────────────
+    // Una fila por cada asignación activa de equipo
+    const detalleEquipos = [];
+    database.asignaciones
+        .filter(a => a.estado === 'Activa')
+        .forEach(asig => {
+            const col = database.colaboradores.find(c => c._id === asig.colaboradorId);
+            const eq  = database.equipos.find(e => e._id === asig.equipoId);
+            if (!col || !eq) return;
+            const enGarantia = garantiaVigente ? garantiaVigente(eq.fechaCompra, eq.garantiaMeses) : false;
+            const proximoMtto = calcularProximoMantenimiento
+                ? calcularProximoMantenimiento(eq.ultimoMantenimiento, eq.frecuenciaMantenimiento)
+                : null;
+            detalleEquipos.push({
+                'Colaborador':          col.nombre,
+                'Tipo Colaborador':     col.esExterno ? 'Externo' : 'Interno',
+                'Departamento':         col.departamento || '',
+                'Puesto':               col.puesto || '',
+                'Jefe Inmediato':       col.jefeInmediato || '',
+                'Email':                col.email || '',
+
+                'Tipo Equipo':          eq.tipo || '',
+                'Marca':                eq.marca || '',
+                'Modelo':               eq.modelo || '',
+                'Número de Serie':      eq.numSerie || '',
+                'ID Interno Equipo':    eq.idInterno || '',
+                'Nombre Equipo':        eq.nombreEquipo || '',
+                'Categoría':            eq.categoria ? `Categoría ${eq.categoria}` : '',
+                'Procesador':           eq.procesador || '',
+                'RAM (GB)':             eq.ram || '',
+                'Almacenamiento':       eq.almacenamiento || '',
+                'Sistema Operativo':    eq.so || '',
+                'Propiedad':            eq.propiedad || '',
+
+                'Tipo de Asignación':   asig.esTemporal ? 'Temporal' : 'Permanente',
+                'Fecha Asignación':     fmt(asig.fechaAsignacion),
+                'Días en Uso':          diasDesde(asig.fechaAsignacion),
+                'Notas Asignación':     asig.notas || asig.observaciones || '',
+
+                'En Garantía':          enGarantia ? 'Sí' : 'No',
+                'Venc. Garantía':       (() => {
+                    if (!eq.fechaCompra || !eq.garantiaMeses) return '';
+                    const v = new Date(eq.fechaCompra);
+                    v.setMonth(v.getMonth() + parseInt(eq.garantiaMeses));
+                    return v.toLocaleDateString('es-MX');
+                })(),
+                'Proveedor':            eq.proveedor || '',
+                'Factura':              eq.factura || '',
+                'Próximo Mantenimiento': proximoMtto ? proximoMtto.toLocaleDateString('es-MX') : '',
+
+                'Carta Responsiva':     col.cartaEstado === 'completa' ? 'Completa' : 'Pendiente',
+            });
+        });
+    detalleEquipos.sort((a, b) => a['Colaborador'].localeCompare(b['Colaborador'], 'es'));
+    if (detalleEquipos.length > 0) {
+        agregarHoja(wb, '💻 Equipos por Colaborador', detalleEquipos);
+    }
+
+    // ─── Hoja 5: Detalle de Celulares por Colaborador ────────────────────────
+    const detalleCelulares = [];
+    (database.asignacionesCelulares || [])
+        .filter(a => a.estado === 'Activa')
+        .forEach(asig => {
+            const col = database.colaboradores.find(c => c._id === asig.colaboradorId);
+            const cel = database.celulares.find(c => c._id === asig.celularId);
+            if (!col || !cel) return;
+            detalleCelulares.push({
+                'Colaborador':          col.nombre,
+                'Tipo Colaborador':     col.esExterno ? 'Externo' : 'Interno',
+                'Departamento':         col.departamento || '',
+                'Puesto':               col.puesto || '',
+                'Jefe Inmediato':       col.jefeInmediato || '',
+                'Email':                col.email || '',
+
+                'Marca Celular':        cel.marca || '',
+                'Modelo Celular':       cel.modelo || '',
+                'IMEI':                 cel.imei || '',
+                'Número Telefónico':    cel.numero || cel.numeroCelular || '',
+                'Compañía Móvil':       cel.companiaMovil || '',
+                'Plan':                 cel.plan || '',
+                'Color':                cel.color || '',
+                'Almacenamiento':       cel.almacenamiento || '',
+                'Estado Equipo':        cel.estado || '',
+                'Propiedad':            cel.propiedad || '',
+                'Número de Serie':      cel.numSerie || '',
+
+                'Tipo de Asignación':   asig.esTemporal ? 'Temporal' : 'Permanente',
+                'Fecha Asignación':     fmt(asig.fechaAsignacion),
+                'Días en Uso':          diasDesde(asig.fechaAsignacion),
+                'Notas Asignación':     asig.notas || asig.observaciones || '',
+            });
+        });
+    detalleCelulares.sort((a, b) => a['Colaborador'].localeCompare(b['Colaborador'], 'es'));
+    if (detalleCelulares.length > 0) {
+        agregarHoja(wb, '📱 Celulares por Colaborador', detalleCelulares);
+    }
+
+    // ─── Hoja 6: Licencias por Colaborador ───────────────────────────────────
+    const detalleLicencias = [];
+    (database.licenciasAsignaciones || []).forEach(la => {
+        const col = database.colaboradores.find(c => c._id === la.colaboradorId);
+        const lic = database.licencias.find(l => l._id === la.licenciaId);
+        if (!col || !lic) return;
+        const vencida    = lic.fechaVencimiento && new Date(lic.fechaVencimiento) < hoy;
+        const diasParaVencer = lic.fechaVencimiento
+            ? Math.ceil((new Date(lic.fechaVencimiento) - hoy) / 86400000)
+            : null;
+        detalleLicencias.push({
+            'Colaborador':          col.nombre,
+            'Tipo Colaborador':     col.esExterno ? 'Externo' : 'Interno',
+            'Departamento':         col.departamento || '',
+            'Puesto':               col.puesto || '',
+            'Email':                col.email || '',
+
+            'Software / Licencia':  lic.software || lic.nombre || '',
+            'Tipo Licencia':        lic.tipo || '',
+            'Clave / Código':       lic.clave || '',
+            'Estado Licencia':      lic.estado || '',
+            'Fecha Compra':         fmt(lic.fechaCompra),
+            'Fecha Vencimiento':    fmt(lic.fechaVencimiento),
+            'Días para Vencer':     diasParaVencer !== null ? diasParaVencer : '',
+            'Vencida':              vencida ? 'Sí' : 'No',
+            'Notas':                lic.notas || '',
+        });
     });
-    
-    agregarHoja(wb, 'Colaboradores', colaboradoresData);
-    
+    detalleLicencias.sort((a, b) => a['Colaborador'].localeCompare(b['Colaborador'], 'es'));
+    if (detalleLicencias.length > 0) {
+        agregarHoja(wb, '🔑 Licencias por Colaborador', detalleLicencias);
+    }
+
+    // ─── Hoja 7: Historial completo de asignaciones (activas + devueltas) ────
+    const historialAsig = [];
+    database.asignaciones.forEach(asig => {
+        const col = database.colaboradores.find(c => c._id === asig.colaboradorId);
+        const eq  = database.equipos.find(e => e._id === asig.equipoId);
+        historialAsig.push({
+            'Colaborador':       col ? col.nombre : '(eliminado)',
+            'Tipo Colaborador':  col ? (col.esExterno ? 'Externo' : 'Interno') : '',
+            'Departamento':      col ? col.departamento || '' : '',
+            'Equipo':            eq  ? `${eq.marca} ${eq.modelo}` : '(eliminado)',
+            'Tipo Equipo':       eq  ? eq.tipo || '' : '',
+            'Número de Serie':   eq  ? eq.numSerie || '' : '',
+            'Categoría':         eq  ? (eq.categoria ? `Cat.${eq.categoria}` : '') : '',
+            'Fecha Asignación':  fmt(asig.fechaAsignacion),
+            'Fecha Devolución':  fmt(asig.fechaDevolucion),
+            'Estado':            asig.estado,
+            'Tipo Asignación':   asig.esTemporal ? 'Temporal' : 'Permanente',
+            'Días de Uso':       asig.fechaDevolucion
+                                    ? Math.floor((new Date(asig.fechaDevolucion) - new Date(asig.fechaAsignacion)) / 86400000)
+                                    : diasDesde(asig.fechaAsignacion),
+            'Notas':             asig.notas || asig.observaciones || '',
+        });
+    });
+    // Agregar historial de celulares
+    (database.asignacionesCelulares || []).forEach(asig => {
+        const col = database.colaboradores.find(c => c._id === asig.colaboradorId);
+        const cel = database.celulares.find(c => c._id === asig.celularId);
+        historialAsig.push({
+            'Colaborador':       col ? col.nombre : '(eliminado)',
+            'Tipo Colaborador':  col ? (col.esExterno ? 'Externo' : 'Interno') : '',
+            'Departamento':      col ? col.departamento || '' : '',
+            'Equipo':            cel ? `${cel.marca} ${cel.modelo} (Celular)` : '(eliminado)',
+            'Tipo Equipo':       'Celular',
+            'Número de Serie':   cel ? cel.imei || '' : '',
+            'Categoría':         '',
+            'Fecha Asignación':  fmt(asig.fechaAsignacion),
+            'Fecha Devolución':  fmt(asig.fechaDevolucion),
+            'Estado':            asig.estado,
+            'Tipo Asignación':   asig.esTemporal ? 'Temporal' : 'Permanente',
+            'Días de Uso':       asig.fechaDevolucion
+                                    ? Math.floor((new Date(asig.fechaDevolucion) - new Date(asig.fechaAsignacion)) / 86400000)
+                                    : diasDesde(asig.fechaAsignacion),
+            'Notas':             asig.notas || asig.observaciones || '',
+        });
+    });
+    historialAsig.sort((a, b) => {
+        const fa = a['Fecha Asignación'] || '';
+        const fb = b['Fecha Asignación'] || '';
+        return fb.localeCompare(fa);   // más reciente primero
+    });
+    if (historialAsig.length > 0) {
+        agregarHoja(wb, '📋 Historial Asignaciones', historialAsig);
+    }
+
+    // ─── Hoja 8: Colaboradores sin activos asignados ─────────────────────────
+    const sinActivos = activos
+        .filter(c =>
+            !database.asignaciones.some(a => a.colaboradorId === c._id && a.estado === 'Activa') &&
+            !(database.asignacionesCelulares || []).some(a => a.colaboradorId === c._id && a.estado === 'Activa')
+        )
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .map(col => ({
+            'Nombre':           col.nombre,
+            'Tipo':             col.esExterno ? 'Externo' : 'Interno',
+            'Email':            col.email || '',
+            'Departamento':     col.departamento || '',
+            'Puesto':           col.puesto || '',
+            'Jefe Inmediato':   col.jefeInmediato || '',
+            'Fecha de Ingreso': fmt(col.fechaIngreso),
+            'Tiene Licencias':  (database.licenciasAsignaciones || []).some(la => la.colaboradorId === col._id) ? 'Sí' : 'No',
+        }));
+    if (sinActivos.length > 0) {
+        agregarHoja(wb, '⚠️ Sin Activos Asignados', sinActivos);
+    }
+
+    // ─── Hoja 9: Bajas registradas ───────────────────────────────────────────
+    const historialBajas = database.historialBajas || [];
+    if (historialBajas.length > 0) {
+        const bajasData = historialBajas
+            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+            .map(b => ({
+                'Colaborador':         b.colaboradorNombre || '',
+                'Departamento':        b.departamento || '',
+                'Puesto':              b.puesto || '',
+                'Motivo de Baja':      b.motivo || '',
+                'Activos Reasignados a': b.receptorNombre || 'Sin activos / Almacén',
+                'Procesado por':       b.procesadoPor || '',
+                'Fecha de Baja':       fmtTs(b.fecha),
+                'Vía solicitud':       b.solicitudId ? 'Sí' : 'No (baja directa)',
+            }));
+        agregarHoja(wb, '🚪 Historial Bajas', bajasData);
+    }
+
     const fecha = new Date().toISOString().split('T')[0];
     descargarExcel(wb, `Reporte_Colaboradores_${fecha}.xlsx`);
-    showNotification('✅ Reporte de colaboradores descargado', 'success');
+    showNotification('✅ Reporte de colaboradores descargado (8 hojas)', 'success');
 }
 
 // Reporte de Equipos por Estado
