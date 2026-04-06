@@ -67,30 +67,38 @@
             <input type="file" id="fileInput" accept=".json" onchange="importarDatos(event)">
         </div>-->
         
-        <nav class="main-nav">
-            <button class="nav-btn active" onclick="showSection('dashboard')">
-                📊 Dashboard
+        <nav class="main-nav" id="mainNav">
+            <!-- Logo + toggle -->
+            <div class="nav-header">
+                <span class="nav-logo">⚡ <span class="nav-label">Inventario</span></span>
+                <button class="nav-toggle-btn" onclick="toggleSidebar()" title="Colapsar menú" id="sidebarToggle">
+                    <span class="toggle-icon">‹</span>
+                </button>
+            </div>
+
+            <button class="nav-btn active" onclick="showSection('dashboard')" data-tooltip="Dashboard">
+                <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
             </button>
-            <button class="nav-btn" onclick="showSection('colaboradores')">
-                👥 Colaboradores
+            <button class="nav-btn" onclick="showSection('colaboradores')" data-tooltip="Colaboradores">
+                <span class="nav-icon">👥</span><span class="nav-label">Colaboradores</span>
             </button>
-            <button class="nav-btn" onclick="showSection('equipos')">
-                💻 Equipos
+            <button class="nav-btn" onclick="showSection('equipos')" data-tooltip="Equipos">
+                <span class="nav-icon">💻</span><span class="nav-label">Equipos</span>
             </button>
-            <button class="nav-btn" onclick="showSection('celulares')">
-                📱 Celulares
+            <button class="nav-btn" onclick="showSection('celulares')" data-tooltip="Celulares">
+                <span class="nav-icon">📱</span><span class="nav-label">Celulares</span>
             </button>
-            <button class="nav-btn" onclick="showSection('asignaciones')">
-                🔗 Asignaciones
+            <button class="nav-btn" onclick="showSection('asignaciones')" data-tooltip="Asignaciones">
+                <span class="nav-icon">🔗</span><span class="nav-label">Asignaciones</span>
             </button>
-            <button class="nav-btn" onclick="showSection('licencias')">
-                🔑 Licencias
+            <button class="nav-btn" onclick="showSection('licencias')" data-tooltip="Licencias">
+                <span class="nav-icon">🔑</span><span class="nav-label">Licencias</span>
             </button>
-            <button class="nav-btn" onclick="showSection('reportes')">
-                📈 Reportes
+            <button class="nav-btn" onclick="showSection('reportes')" data-tooltip="Reportes">
+                <span class="nav-icon">📈</span><span class="nav-label">Reportes</span>
             </button>
-            <button class="nav-btn" onclick="showSection('bajas')" style="position:relative;">
-                🚪 Bajas
+            <button class="nav-btn" onclick="showSection('bajas')" data-tooltip="Bajas" style="position:relative;">
+                <span class="nav-icon">🚪</span><span class="nav-label">Bajas</span>
                 <span id="badgeBajasPendientes"
                       style="display:none;position:absolute;top:6px;right:6px;
                              background:#ef4444;color:white;border-radius:50%;
@@ -1448,5 +1456,21 @@
 <script src="./js/reportes.js"></script>
 <script src="./js/bajas.js"></script>
 <script>initAuth();</script>
+<script>
+// ── Sidebar toggle ─────────────────────────────────────────────────
+function toggleSidebar() {
+    const collapsed = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+    document.getElementById('sidebarToggle').title = collapsed ? 'Expandir menú' : 'Colapsar menú';
+}
+// Restore state on load
+(function() {
+    if (localStorage.getItem('sidebarCollapsed') === '1') {
+        document.body.classList.add('sidebar-collapsed');
+        const btn = document.getElementById('sidebarToggle');
+        if (btn) btn.title = 'Expandir menú';
+    }
+})();
+</script>
 </body>
 </html>

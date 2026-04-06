@@ -97,6 +97,13 @@ function renderEquipos() {
         return hayBusqueda && hayEstado && hayCategoria && hayPropiedad;
     });
 
+    // ── Ordenar alfabéticamente por nombre del equipo ───────────────────────
+    equiposFiltrados.sort((a, b) => {
+        const nombreA = (a.nombreEquipo || `${a.marca} ${a.modelo}` || '').toLowerCase();
+        const nombreB = (b.nombreEquipo || `${b.marca} ${b.modelo}` || '').toLowerCase();
+        return nombreA.localeCompare(nombreB, 'es');
+    });
+
     if (database.equipos.length === 0) {
         tbody.innerHTML = `
             <tr>
