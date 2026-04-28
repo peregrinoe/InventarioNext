@@ -79,10 +79,22 @@ function renderEquipos() {
 
     // ── Filtrar sobre los datos ─────────────────────────────────────────────
     let equiposFiltrados = database.equipos.filter(eq => {
+        const asignacionActiva = database.asignaciones.find(a =>
+            a.equipoId === eq._id && a.estado === 'Activa'
+        );
+        const colaboradorAsignado = asignacionActiva
+            ? database.colaboradores.find(c => c._id === asignacionActiva.colaboradorId)
+            : null;
+        const nombreAsignado = (colaboradorAsignado?.nombre || '').toLowerCase();
+
         // Búsqueda de texto: modelo, marca, num serie, nombre, id interno, observaciones
+        // Para la columna "Asignado a": si tiene asignación activa busca por nombre del colaborador,
+        // si no, busca por ubicación manual (igual que lo que se muestra en la tabla).
+        const campoAsignadoVisible = colaboradorAsignado ? colaboradorAsignado.nombre : eq.ubicacion;
         const hayBusqueda = !searchTerm || [
             eq.modelo, eq.marca, eq.numSerie, eq.nombreEquipo,
-            eq.idInterno, eq.observaciones, eq.procesador, eq.ubicacion
+            eq.idInterno, eq.observaciones, eq.procesador,
+            campoAsignadoVisible
         ].some(v => (v || '').toLowerCase().includes(searchTerm));
 
         // Estado
