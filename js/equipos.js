@@ -38,6 +38,11 @@ async function saveEquipo(event) {
         ubicacion:               getVal('equipoUbicacion'),
         estado:                  getVal('equipoEstado'),
         observaciones:           getVal('equipoObservaciones'),
+        owner:                   getVal('equipoOwner'),
+        esquema:                 getVal('equipoEsquema'),
+        cifradoDisco:            getVal('equipoCifradoDisco'),
+        antivirusEdr:            getVal('equipoAntivirusEdr'),
+        nivelAcceso:             getVal('equipoNivelAcceso'),
         fotos: fotos,
         createdAt: id
             ? (database.equipos.find(e => e._id === id) || {}).createdAt || new Date().toISOString()
@@ -875,6 +880,16 @@ function editEquipo(id) {
     if (condEl) condEl.value = equipo.condicion || '';
     const ubicEl = document.getElementById('equipoUbicacion');
     if (ubicEl) ubicEl.value = equipo.ubicacion || '';
+    const ownerEl = document.getElementById('equipoOwner');
+    if (ownerEl) ownerEl.value = equipo.owner || '';
+    const esquemaEl = document.getElementById('equipoEsquema');
+    if (esquemaEl) esquemaEl.value = equipo.esquema || '';
+    const cifradoEl = document.getElementById('equipoCifradoDisco');
+    if (cifradoEl) cifradoEl.value = equipo.cifradoDisco || '';
+    const antivirusEl = document.getElementById('equipoAntivirusEdr');
+    if (antivirusEl) antivirusEl.value = equipo.antivirusEdr || '';
+    const nivelEl = document.getElementById('equipoNivelAcceso');
+    if (nivelEl) nivelEl.value = equipo.nivelAcceso || '';
     document.getElementById('equipoEstado').value = equipo.estado;
     document.getElementById('equipoObservaciones').value = equipo.observaciones || '';
     
