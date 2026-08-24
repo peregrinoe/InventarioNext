@@ -87,6 +87,11 @@ function generarReporteGeneral() {
             'SO': eq.so || '',
             'Estado': eq.estado,
             'Asignado a': colaborador ? colaborador.nombre : '',
+            'Área/Responsable (Owner)': eq.owner || '',
+            'Ubicación/Esquema': eq.esquema || '',
+            'Cifrado de disco (BitLocker)': eq.cifradoDisco || '',
+            'Antivirus/EDR (Kaspersky)': eq.antivirusEdr || '',
+            'Nivel de acceso': eq.nivelAcceso || '',
             'Fecha Compra': eq.fechaCompra ? new Date(eq.fechaCompra).toLocaleDateString() : '',
             'Precio': eq.precio || '',
             'Proveedor': eq.proveedor || '',
@@ -183,6 +188,11 @@ function generarReporteEquipos() {
             'Estado': eq.estado,
             'Asignado a': colaborador ? colaborador.nombre : 'Sin asignar',
             'Departamento': colaborador ? colaborador.departamento : '',
+            'Área/Responsable (Owner)': eq.owner || '',
+            'Ubicación/Esquema': eq.esquema || '',
+            'Cifrado de disco (BitLocker)': eq.cifradoDisco || '',
+            'Antivirus/EDR (Kaspersky)': eq.antivirusEdr || '',
+            'Nivel de acceso': eq.nivelAcceso || '',
             'Observaciones': eq.observaciones || ''
         };
     });

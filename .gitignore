@@ -1,0 +1,27 @@
+# Backups generados
+backup_supabase*.json
+backup_inventario*.sql
+
+# Archivos de respaldo (versiones anteriores)
+bckup/
+localstoragev1/
+main_bk.css
+js/database-back.js
+test_import.html
+
+# Variables de entorno — NUNCA commitear
+api/.env
+.env
+
+# Dependencias de Node.js
+api/node_modules/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo

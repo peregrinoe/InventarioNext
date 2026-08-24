@@ -1,0 +1,11 @@
+api/node_modules
+api/.env
+bckup/
+localstoragev1/
+main_bk.css
+test_import.html
+backup_supabase*.json
+backup_inventario*.sql
+.git
+.gitignore
+*.md
