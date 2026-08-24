@@ -323,6 +323,11 @@ async function upsertEquipo(equipo) {
         frecuencia_mantenimiento: equipo.frecuenciaMantenimiento || null,
         fotos: equipo.fotos ? JSON.stringify(equipo.fotos) : null,
         observaciones: equipo.observaciones || null,
+        owner: equipo.owner || null,
+        esquema: equipo.esquema || null,
+        cifrado_disco: equipo.cifradoDisco || null,
+        antivirus_edr: equipo.antivirusEdr || null,
+        nivel_acceso: equipo.nivelAcceso || null,
         created_at: equipo.createdAt || new Date().toISOString()
     };
 
