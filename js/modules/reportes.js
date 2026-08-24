@@ -81,6 +81,11 @@ function generarReporteGeneral() {
             'Nombre Equipo': eq.nombreEquipo || '',
             'Categoría': eq.categoria ? `Cat. ${eq.categoria}` : '',
             'Propiedad': eq.propiedad || '',
+            'Área/Responsable (Owner)': eq.owner || '',
+            'Ubicación/Esquema': eq.esquema || '',
+            'Cifrado de disco (BitLocker)': eq.cifradoDisco || '',
+            'Antivirus/EDR (Kaspersky)': eq.antivirusEdr || '',
+            'Nivel de acceso': eq.nivelAcceso || '',
             'Procesador': eq.procesador || '',
             'RAM (GB)': eq.ram || '',
             'Almacenamiento': eq.almacenamiento || '',
@@ -117,6 +122,12 @@ function generarReporteGeneral() {
             'Fecha Ingreso': col.fechaIngreso ? new Date(col.fechaIngreso).toLocaleDateString() : '',
             'Jefe Inmediato': col.jefeInmediato || '',
             'Equipos Asignados': equiposAsignados.length,
+            'Equipos Asignados Detalle': equiposAsignados.map(asig => {
+                const equipo = database.equipos.find(e => e._id === asig.equipoId);
+                const nombre = equipo ? (equipo.nombreEquipo || `${equipo.marca || ''} ${equipo.modelo || ''}`.trim() || 'Equipo') : 'Equipo';
+                const serie = equipo && equipo.numSerie ? ` (S/N: ${equipo.numSerie})` : '';
+                return `${nombre}${serie}`;
+            }).join(' | ') || '',
             'Licencias Asignadas': licenciasAsignadas.length
         };
     });
