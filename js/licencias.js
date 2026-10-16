@@ -1,4 +1,9 @@
 // LICENCIAS
+function escapeLicenciaHTML(value) {
+    const htmlEntities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(value ?? '').replace(/[&<>"']/g, character => htmlEntities[character]);
+}
+
 async function saveLicencia(event) {
     event.preventDefault();
     
@@ -136,25 +141,32 @@ function abrirAsignarUsuarios(licenciaId) {
     
     document.getElementById('licenciaAsignarId').value = licenciaId;
     document.getElementById('licenciaAsignarNombre').textContent = licencia.software;
-    
+    const esAnyDesk = licencia.software.toLowerCase().includes('anydesk');
     const asignacionesActuales = database.licenciasAsignaciones
-        .filter(la => la.licenciaId === licenciaId)
-        .map(la => la.colaboradorId);
+        .filter(la => la.licenciaId === licenciaId);
+    const asignacionesPorColaborador = new Map(
+        asignacionesActuales.map(asignacion => [asignacion.colaboradorId, asignacion])
+    );
     
     const listaHTML = database.colaboradores.map(col => {
-        const isAsignado = asignacionesActuales.includes(col._id);
+        const asignacionActual = asignacionesPorColaborador.get(col._id);
+        const isAsignado = Boolean(asignacionActual);
         const fotoHTML = col.foto ? 
             `<img src="${col.foto}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` :
             `<div style="width: 40px; height: 40px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${col.nombre.charAt(0)}</div>`;
         
         return `
-            <div class="usuario-asignar-item" data-nombre="${col.nombre.toLowerCase()}" style="display: flex; align-items: center; gap: 15px; padding: 12px; border: 2px solid ${isAsignado ? '#667eea' : '#e2e8f0'}; border-radius: 8px; margin-bottom: 10px; background: ${isAsignado ? '#f0f4ff' : 'white'}; cursor: pointer;" onclick="toggleAsignacionLicencia('${col._id}', this)">
+            <div class="usuario-asignar-item" data-nombre="${col.nombre.toLowerCase()}" data-colaborador-id="${col._id}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; padding: 12px; border: 2px solid ${isAsignado ? '#667eea' : '#e2e8f0'}; border-radius: 8px; margin-bottom: 10px; background: ${isAsignado ? 'var(--accent-primary-bg)' : 'white'}; cursor: pointer;" onclick="toggleAsignacionLicencia('${col._id}', this)">
                 ${fotoHTML}
                 <div style="flex: 1;">
                     <strong style="color: #1e293b;">${col.nombre}</strong>
                     <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">${col.departamento} - ${col.puesto}</p>
                 </div>
                 <input type="checkbox" ${isAsignado ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;" onclick="event.stopPropagation();">
+                <div style="flex-basis: 100%; margin-left: 55px; ${esAnyDesk ? '' : 'display: none;'}" onclick="event.stopPropagation();">
+                    <label for="anydeskWorkspace_${col._id}" style="display: block; margin-bottom: 5px;">ID del espacio de trabajo AnyDesk *</label>
+                    <input type="text" id="anydeskWorkspace_${col._id}" data-workspace-id="${col._id}" value="${escapeLicenciaHTML(asignacionActual?.espacioTrabajo || '')}" placeholder="ID proporcionado por AnyDesk" style="width: 100%; max-width: 420px;">
+                </div>
             </div>
         `;
     }).join('');
@@ -169,7 +181,7 @@ function toggleAsignacionLicencia(colaboradorId, element) {
     
     if (checkbox.checked) {
         element.style.borderColor = '#667eea';
-        element.style.background = '#f0f4ff';
+        element.style.background = 'var(--accent-primary-bg)';
     } else {
         element.style.borderColor = '#e2e8f0';
         element.style.background = 'white';
@@ -188,24 +200,34 @@ function filterUsuariosAsignar() {
 
 async function guardarAsignacionesLicencia() {
     const licenciaId = document.getElementById('licenciaAsignarId').value;
-    const checkboxes = document.querySelectorAll('#listaUsuariosAsignar input[type="checkbox"]');
-    
+    const licencia = database.licencias.find(l => l._id === licenciaId);
+    const esAnyDesk = licencia && licencia.software.toLowerCase().includes('anydesk');
+    const filas = [...document.querySelectorAll('#listaUsuariosAsignar .usuario-asignar-item')];
+    const nuevas = filas.flatMap((fila, index) => {
+        if (!fila.querySelector('input[type="checkbox"]').checked) return [];
+
+        return [{
+            _id: 'LA' + Date.now() + '_' + index,
+            licenciaId: licenciaId,
+            colaboradorId: fila.dataset.colaboradorId,
+            espacioTrabajo: esAnyDesk ? fila.querySelector('[data-workspace-id]').value.trim() : '',
+            fechaAsignacion: new Date().toISOString()
+        }];
+    });
+
+    if (esAnyDesk) {
+        const asignacionSinWorkspace = nuevas.find(asignacion => !asignacion.espacioTrabajo);
+        if (asignacionSinWorkspace) {
+            showNotification('❌ Ingresa el ID de AnyDesk de cada colaborador seleccionado.', 'error');
+            filas.find(fila => fila.dataset.colaboradorId === asignacionSinWorkspace.colaboradorId)
+                .querySelector('[data-workspace-id]').focus();
+            return;
+        }
+    }
+
     try {
         await deleteLicenciaAsignacionesPorLicencia(licenciaId);
         database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== licenciaId);
-
-        const nuevas = [];
-        checkboxes.forEach((checkbox, index) => {
-            if (checkbox.checked) {
-                const colaboradorId = database.colaboradores[index]._id;
-                nuevas.push({
-                    _id: 'LA' + Date.now() + '_' + index,
-                    licenciaId: licenciaId,
-                    colaboradorId: colaboradorId,
-                    fechaAsignacion: new Date().toISOString()
-                });
-            }
-        });
 
         for (const la of nuevas) {
             await upsertLicenciaAsignacion(la);
@@ -230,7 +252,7 @@ function seleccionarTodosUsuarios() {
             const checkbox = item.querySelector('input[type="checkbox"]');
             checkbox.checked = true;
             item.style.borderColor = '#667eea';
-            item.style.background = '#f0f4ff';
+            item.style.background = 'var(--accent-primary-bg)';
         }
     });
     showNotification('✓ Todos los usuarios seleccionados', 'success');
@@ -267,6 +289,7 @@ function verDetalleLicencia(id) {
                 <div style="flex: 1;">
                     <strong style="color: #1e293b;">${colaborador.nombre}</strong>
                     <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">${colaborador.departamento} - ${colaborador.puesto}</p>
+                    ${asig.espacioTrabajo ? `<p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;"><strong>ID AnyDesk:</strong> ${escapeLicenciaHTML(asig.espacioTrabajo)}</p>` : ''}
                     <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.85em;">Asignada el: ${new Date(asig.fechaAsignacion).toLocaleDateString()}</p>
                 </div>
             </div>

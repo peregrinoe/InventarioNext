@@ -776,6 +776,7 @@ function verDetalleColaborador(id) {
                     <div>
                         <h4 style="margin: 0 0 4px 0; color: #1e293b;">${licencia.software}</h4>
                         <p style="margin: 0; color: #64748b; font-size: 0.9em;">${licencia.tipo}</p>
+                        ${licencia.software.toLowerCase().includes('anydesk') && la.espacioTrabajo ? `<p style="margin: 4px 0 0; color: #64748b; font-size: 0.9em;"><strong>ID AnyDesk:</strong> ${escapeLicenciaHTML(la.espacioTrabajo)}</p>` : ''}
                     </div>
                     <span class="badge ${estadoBadgeLic}">${licencia.estado}</span>
                 </div>
@@ -840,14 +841,14 @@ function verDetalleColaborador(id) {
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-                <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">📧 Contacto</h3>
+                <h3 style="display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;"><i data-lucide="mail" style="width: 18px; height: 18px;"></i> Contacto</h3>
                 <p style="margin: 6px 0; color: #475569;"><strong>Email:</strong> ${colaborador.email}</p>
                 ${colaborador.telefono ? `<p style="margin: 6px 0; color: #475569;"><strong>Teléfono:</strong> ${colaborador.telefono}</p>` : ''}
                 ${colaborador.jefeInmediato ? `<p style="margin: 6px 0; color: #475569;"><strong>Jefe:</strong> ${colaborador.jefeInmediato}</p>` : ''}
             </div>
             
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-                <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;">📊 Estadísticas</h3>
+                <h3 style="display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; color: #1e293b; font-size: 1.1em;"><i data-lucide="chart-column" style="width: 18px; height: 18px;"></i> Estadísticas</h3>
                 <p style="margin: 6px 0; color: #475569;"><strong>Equipos Asignados:</strong> ${
                     asigPermDetalle.length > 0 && asigTempDetalle.length > 0
                         ? `${asigPermDetalle.length} permanente(s) · ${asigTempDetalle.length} temporal(es)`
@@ -895,7 +896,7 @@ function verDetalleColaborador(id) {
         ` : ''}
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 25px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">💻 Equipos Asignados Actualmente</h3>
+            <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; color: #1e293b;"><i data-lucide="monitor" style="width: 18px; height: 18px;"></i> Equipos Asignados Actualmente</h3>
         </div>
         <div style="display: grid; gap: 12px;">
             ${equiposHTML || '<p style="color: #94a3b8; text-align: center; padding: 20px;">Sin equipos asignados actualmente</p>'}
@@ -903,21 +904,21 @@ function verDetalleColaborador(id) {
         
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">📱 Celulares Asignados Actualmente</h3>
+            <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; color: #1e293b;"><i data-lucide="smartphone" style="width: 18px; height: 18px;"></i> Celulares Asignados Actualmente</h3>
         </div>
         <div style="display: grid; gap: 12px; margin-bottom: 10px;">
             ${celularesActivosHTML}
         </div>
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">📜 Historial de Asignaciones</h3>
+            <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; color: #1e293b;"><i data-lucide="history" style="width: 18px; height: 18px;"></i> Historial de Asignaciones</h3>
         </div>
         <div style="max-height: 300px; overflow-y: auto;">
             ${historialHTML}
         </div>
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 30px 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            <h3 style="margin: 0; color: #1e293b;">🔑 Licencias Asignadas</h3>
+            <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; color: #1e293b;"><i data-lucide="key" style="width: 18px; height: 18px;"></i> Licencias Asignadas</h3>
         </div>
         <div style="max-height: 200px; overflow-y: auto;">
             ${licenciasHTML}
@@ -925,6 +926,7 @@ function verDetalleColaborador(id) {
     `;
     
     document.getElementById('detalleColaboradorContent').innerHTML = content;
+    if (window.lucide) window.lucide.createIcons();
     openModal('modalDetalleColaborador');
 }
 

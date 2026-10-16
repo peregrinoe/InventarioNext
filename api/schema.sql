@@ -174,8 +174,11 @@ CREATE TABLE IF NOT EXISTS licencias_asignaciones (
     id                TEXT PRIMARY KEY,
     licencia_id       TEXT REFERENCES licencias(id) ON DELETE CASCADE,
     colaborador_id    TEXT REFERENCES colaboradores(id) ON DELETE CASCADE,
-    fecha_asignacion  DATE NOT NULL
+    fecha_asignacion  DATE NOT NULL,
+    espacio_trabajo   TEXT
 );
+
+ALTER TABLE licencias_asignaciones ADD COLUMN IF NOT EXISTS espacio_trabajo TEXT;
 
 -- ── Solicitudes de baja ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS solicitudes_baja (

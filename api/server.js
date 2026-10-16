@@ -376,11 +376,11 @@ app.post('/api/licencias-asignaciones', requireAuth, async (req, res) => {
     try {
         await pool.query(`
             INSERT INTO licencias_asignaciones
-                (id, licencia_id, colaborador_id, fecha_asignacion)
-            VALUES ($1,$2,$3,$4)
+                (id, licencia_id, colaborador_id, fecha_asignacion, espacio_trabajo)
+            VALUES ($1,$2,$3,$4,$5)
             ON CONFLICT (id) DO UPDATE SET
-                licencia_id=$2, colaborador_id=$3, fecha_asignacion=$4
-        `, [la.id, la.licencia_id, la.colaborador_id, la.fecha_asignacion]);
+                licencia_id=$2, colaborador_id=$3, fecha_asignacion=$4, espacio_trabajo=$5
+        `, [la.id, la.licencia_id, la.colaborador_id, la.fecha_asignacion, la.espacio_trabajo || null]);
         res.json({ ok: true });
     } catch (err) {
         console.error('POST /api/licencias-asignaciones:', err.message);

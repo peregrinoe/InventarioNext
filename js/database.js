@@ -259,7 +259,8 @@ function mapLicenciaAsignacion(row) {
         _id: row.id,
         licenciaId: row.licencia_id,
         colaboradorId: row.colaborador_id,
-        fechaAsignacion: row.fecha_asignacion
+        fechaAsignacion: row.fecha_asignacion,
+        espacioTrabajo: row.espacio_trabajo || ''
     };
 }
 
@@ -446,7 +447,8 @@ async function upsertLicenciaAsignacion(la) {
         id: la._id,
         licencia_id: la.licenciaId,
         colaborador_id: la.colaboradorId,
-        fecha_asignacion: la.fechaAsignacion
+        fecha_asignacion: la.fechaAsignacion,
+        espacio_trabajo: la.espacioTrabajo || null
     };
 
     const { error } = await supabaseClient.from('licencias_asignaciones').upsert(row, { onConflict: 'id' });
