@@ -436,6 +436,15 @@ async function confirmarBaja() {
 
     const col = database.colaboradores.find(c => c._id === colaboradorId);
     if (!col) return;
+    const solicitudActual = solicitudId
+        ? database.solicitudesBaja.find(s => s._id === solicitudId)
+        : null;
+    const estadoSolicitudOriginal = solicitudActual ? {
+        estado: solicitudActual.estado,
+        fechaResolucion: solicitudActual.fechaResolucion,
+        resueltoPor: solicitudActual.resueltoPor
+    } : null;
+    let solicitudPersistida = false;
 
     try {
         // 1. Marcar colaborador como inactivo
@@ -528,14 +537,12 @@ async function confirmarBaja() {
         }
 
         // 3. Resolver la solicitud si venía de una
-        if (solicitudId) {
-            const sol = database.solicitudesBaja.find(s => s._id === solicitudId);
-            if (sol) {
-                sol.estado          = 'aprobada';
-                sol.fechaResolucion = _ahoraLocal();
-                sol.resueltoPor     = currentUser ? currentUser.nombre : 'Admin';
-                await upsertSolicitudBaja(sol);
-            }
+        if (solicitudActual) {
+            solicitudActual.estado          = 'aprobada';
+            solicitudActual.fechaResolucion = _ahoraLocal();
+            solicitudActual.resueltoPor     = currentUser ? currentUser.nombre : 'Admin';
+            await upsertSolicitudBaja(solicitudActual);
+            solicitudPersistida = true;
         }
 
         // 4. Registrar en historial de bajas
@@ -563,7 +570,12 @@ async function confirmarBaja() {
 
     } catch(e) {
         console.error('Error procesando baja:', e);
-        showNotification('❌ Error al procesar la baja. Revisa la consola.', 'error');
+        if (solicitudActual && !solicitudPersistida) {
+            Object.assign(solicitudActual, estadoSolicitudOriginal);
+        }
+        actualizarBadgeBajas();
+        renderBajas();
+        showNotification(`❌ Error al procesar la baja: ${e.message || 'revisa la consola.'}`, 'error');
     }
 }
 
@@ -624,10 +636,8 @@ async function upsertSolicitudBaja(sol) {
         resuelto_por:    sol.resueltoPor || null,
         notas_resolucion: sol.notasResolucion || null
     };
-    try {
-        const { error } = await supabaseClient.from('solicitudes_baja').upsert(row, { onConflict: 'id' });
-        if (error) console.warn('solicitudes_baja upsert:', error.message);
-    } catch(e) { console.warn('Tabla solicitudes_baja no disponible:', e.message); }
+    const { error } = await supabaseClient.from('solicitudes_baja').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
 }
 
 async function upsertHistorialBaja(entrada) {
