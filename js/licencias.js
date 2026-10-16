@@ -57,15 +57,19 @@ function renderLicencias() {
     }
     
     tbody.innerHTML = database.licencias.map(lic => {
-        const cantidadAsignada = database.licenciasAsignaciones.filter(la => 
+        const asignaciones = database.licenciasAsignaciones.filter(la =>
             la.licenciaId === lic._id
-        ).length;
+        );
+        const cantidadAsignada = asignaciones.length;
+        const idsAnyDesk = lic.software.toLowerCase().includes('anydesk')
+            ? asignaciones.map(la => la.espacioTrabajo || '').filter(Boolean).join(' ')
+            : '';
         
         const estadoBadge = lic.estado === 'Activa' ? 'badge-success' : 
                           lic.estado === 'Vencida' ? 'badge-danger' : 'badge-info';
         
         return `
-            <tr>
+            <tr data-anydesk-ids="${escapeLicenciaHTML(idsAnyDesk)}">
                 <td><strong>${lic.software}</strong></td>
                 <td>${lic.tipo}</td>
                 <td style="font-family: monospace; font-size: 0.9em;">${lic.clave || '-'}</td>
@@ -89,7 +93,8 @@ function filterLicencias() {
     
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
+        const idsAnyDesk = (row.dataset.anydeskIds || '').toLowerCase();
+        row.style.display = text.includes(searchTerm) || idsAnyDesk.includes(searchTerm) ? '' : 'none';
     });
 }
 
@@ -202,16 +207,21 @@ async function guardarAsignacionesLicencia() {
     const licenciaId = document.getElementById('licenciaAsignarId').value;
     const licencia = database.licencias.find(l => l._id === licenciaId);
     const esAnyDesk = licencia && licencia.software.toLowerCase().includes('anydesk');
+    const asignacionesActuales = database.licenciasAsignaciones.filter(la => la.licenciaId === licenciaId);
+    const asignacionesPorColaborador = new Map(
+        asignacionesActuales.map(asignacion => [asignacion.colaboradorId, asignacion])
+    );
     const filas = [...document.querySelectorAll('#listaUsuariosAsignar .usuario-asignar-item')];
     const nuevas = filas.flatMap((fila, index) => {
         if (!fila.querySelector('input[type="checkbox"]').checked) return [];
 
+        const asignacionActual = asignacionesPorColaborador.get(fila.dataset.colaboradorId);
         return [{
-            _id: 'LA' + Date.now() + '_' + index,
+            _id: asignacionActual?._id || 'LA' + Date.now() + '_' + index,
             licenciaId: licenciaId,
             colaboradorId: fila.dataset.colaboradorId,
             espacioTrabajo: esAnyDesk ? fila.querySelector('[data-workspace-id]').value.trim() : '',
-            fechaAsignacion: new Date().toISOString()
+            fechaAsignacion: asignacionActual?.fechaAsignacion || new Date().toISOString()
         }];
     });
 
@@ -226,21 +236,25 @@ async function guardarAsignacionesLicencia() {
     }
 
     try {
-        await deleteLicenciaAsignacionesPorLicencia(licenciaId);
-        database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== licenciaId);
-
         for (const la of nuevas) {
             await upsertLicenciaAsignacion(la);
-            database.licenciasAsignaciones.push(la);
         }
 
+        const idsNuevas = new Set(nuevas.map(asignacion => asignacion._id));
+        const asignacionesAEliminar = asignacionesActuales.filter(asignacion => !idsNuevas.has(asignacion._id));
+        for (const asignacion of asignacionesAEliminar) {
+            await deleteLicenciaAsignacionDB(asignacion._id);
+        }
+
+        database.licenciasAsignaciones = database.licenciasAsignaciones.filter(la => la.licenciaId !== licenciaId);
+        database.licenciasAsignaciones.push(...nuevas);
         renderLicencias();
         renderColaboradores();
         closeModal('modalAsignarUsuarios');
         showNotification('✅ Asignaciones guardadas correctamente');
     } catch(e) {
         console.error('Error guardando asignaciones de licencia:', e);
-        showNotification('❌ Error al guardar asignaciones.', 'error');
+        showNotification(`❌ Error al guardar asignaciones: ${e.message || 'revisa la conexión y el esquema de Supabase.'}`, 'error');
     }
 }
 

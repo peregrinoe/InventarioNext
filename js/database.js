@@ -455,6 +455,14 @@ async function upsertLicenciaAsignacion(la) {
     if (error) throw error;
 }
 
+async function deleteLicenciaAsignacionDB(id) {
+    const { error } = await supabaseClient
+        .from('licencias_asignaciones')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
+}
+
 async function deleteLicenciaAsignacionesPorLicencia(licenciaId) {
     const { error } = await supabaseClient
         .from('licencias_asignaciones')
